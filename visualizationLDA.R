@@ -16,10 +16,6 @@ topicmodels_json_ldavis <- function(fitted, corpus, doc_term){
   library(tm)
   library(LDAvis)
   
-  fitted=DTM_model
-  corpus=corpusFirm
-  doc_term=gilead_DTM
-  
   ## Find required quantities
   phi=posterior(fitted)$terms %>% as.matrix
   theta=posterior(fitted)$topics %>% as.matrix
