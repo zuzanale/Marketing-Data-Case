@@ -11,7 +11,7 @@ load("CORPUS_GILEAD.rda")
 library("ldatuning")
 #library("topicmodels")
 
-result <- FindTopicsNumber(
+result <- FindTopicsNumber(#gileadreduced_DTM
   gilead_DTM,
   topics = seq(from = 2, to = 15, by = 1),
   metrics = c("Griffiths2004", "CaoJuan2009", "Arun2010", "Deveaud2014"),
