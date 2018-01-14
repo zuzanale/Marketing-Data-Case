@@ -58,5 +58,6 @@ topic_model=function(gilead_DT,remove="sparse", P=0.99,k=10,iter=2000, seed = 06
   
   ## Adds topic number to original corpus
   doctopics.df=dplyr::inner_join(corpusFirm, doctopics.df, by = "docID")
-  return(DTM_model)
+  List <- list("DTM_model" = DTM_model, "gilead_DTM" =gilead_DTM)
+  return(List)
 }
