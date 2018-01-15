@@ -17,11 +17,14 @@ corpus$documents$texts[1]
 # the keywords are as well)
 corpus <- sentometrics::add_features(corpus, 
                                      keywords=list(pharma=
-                                        c("patient", "compund", "method","trademark"),
+                                        c("patient", "compound", "bioscience","genotyp","method"),
                                         stocks=c("stock","gild","trade","rate","return",
-                                                 "call","buy")))
+                                                 "call","buy"),
+                                        drug=c("hiv","viread","truvada","regimen","tenofovir","artipla",
+                                               "table")))
 sum(corpus$documents$pharma)
 sum(corpus$documents$stocks)
+sum(corpus$documents$drug)
 
 data("lexicons")
 data("valence")
