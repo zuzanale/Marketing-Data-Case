@@ -1,4 +1,4 @@
-topic_model=function(gilead_DT,remove="sparse", P=0.99,k=10,iter=2000, seed = 0622,
+topic_model=function(gilead_DTM,remove="sparse", P=0.99,k=10,iter=2000, seed = 0622,
                      T=20)
 {               
   # function for fitting topic model using LDA algorithm
