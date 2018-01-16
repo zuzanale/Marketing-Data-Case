@@ -22,7 +22,7 @@ corpus$documents$texts[1]
 #construct document-frequency matrix, similar as DocumentTermMatrix
 #from tm package
 #stop words
-stoplist=stopwords('en')
+stoplist=stopwords::stopwords('en')
 stoplist[(length(stoplist)+1):(length(stoplist)+3)]=c("www","https","http")
 
 #removing the possessive ending: ’s and non alphabetical characters
@@ -61,6 +61,22 @@ sum(corpus$documents$pharma)
 sum(corpus$documents$stocks)
 sum(corpus$documents$drug)
 
+
+###Create my own lexicon
+#define events matrix
+timeline=data.frame(event=c("Copenhagen.acquisition","Genvoya.approval",
+                   " Odefsey.approval",
+                   "Descovy.approval","Epclusa.approval",
+                   "Vemlidy.approval","Vosevi.approval",
+                   "Yescarta.approval","SantaMonica.acquisition"),
+date= as.Date(c("2015-05-01","2015-11-01","2016-03-01","2016-04-01",
+                "2016-06-01",
+                "2016-11-01","2017-07-01","2017-10-01",
+                "2017-08-01"
+                )))
+
+#pick texts with correspoding events on timeline
+
 data("lexicons")
 data("valence")
 
@@ -70,7 +86,6 @@ data("valence")
 #tokens(corpus$documents$texts, remove_numbers = TRUE,  remove_punct = TRUE)
 #top50=topfeatures(gilead.dfm, 50)  # 50 top words
 #top50=data.frame(word=names(top50),count=top50)
-lexicon_LM=lexicons[c("LM_eng", "GI_eng", "HENRY_eng")]
 
 #regular expression matching for corpus specific phrases 
 a=str_extract(corpusFirm$text,"instead\\s*([a-zA-Z]+\\s*){1,5}safety")
@@ -84,15 +99,15 @@ myLexicon=data.frame(w=c(a,c("approve","release","below average","loss of"
 
 #remove "chronic" from lexicons since in pharma/bioscience topics it is 
 #not negative word, ???needs to be modified
-lexicon_LM[lexicon_LM$LM_eng$x=="chromic"]=NULL
-lexicon_LM[lexicon_LM$GI_eng$x=="chromic"]=NULL
-lexicon_LM[lexicon_LM$HENRY_eng$x=="chromic"]=NULL
-  
-lexicon_LM[lexicon_LM$LM_eng$x=="disease"]=NULL
-lexicon_LM[lexicon_LM$GI_eng$x=="disease"]=NULL
-lexicon_LM[lexicon_LM$HENRY_eng$x=="disease"]=NULL
+toDelete = c("chromic","disease")
+LM_mod= lexicons$LM_eng[!(lexicons$LM_eng$x %in% toDelete)]
+GI_mod= lexicons$GI_eng[!(lexicons$GI_eng$x %in% toDelete)]
+HENRY_mod= lexicons$HENRY_eng[!(lexicons$HENRY_eng$x %in% toDelete)]
 
-lexiconsIn=c(list(myLexicon=myLexicon),lexicons_LM=lexicons[c("LM_eng", "GI_eng", "HENRY_eng")])
+lex = setup_lexicons(list(LM=LM_mod,
+                          GI=GI_mod,
+                          HENRY=HENRY_mod))
+lexiconsIn=c(list(myLexicon=myLexicon),lex)
 lexIn=sentometrics::setup_lexicons(lexiconsIn=lexiconsIn, 
                                       valenceIn=valence[["valence_eng"]], 
                                       do.split=FALSE)
