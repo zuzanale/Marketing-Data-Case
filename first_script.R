@@ -7,7 +7,7 @@ library("sentometrics") # needs to be a data frame to work!!!
 library(stringr) # forregex adjustments
 library(stopwords) #SnowbalC stopwords
 library(quanteda)
-
+library(textstem) #package for lemmatization (overal better than stemming)
 library(tidyverse) #usually used for sentometrics analysis 
 library(tidytext) 
 
@@ -28,14 +28,16 @@ stoplist[(length(stoplist)+1):(length(stoplist)+3)]=c("www","https","http")
 #removing the possessive ending: ’s and non alphabetical characters
 corpus$documents$texts=str_replace_all(corpus$documents$texts, "(^')|('s$)|[^[:alpha:]+[:blank:]]"," ")
 
-gilead.dfm=dfm(corpus, remove = stoplist, stem = TRUE, remove_punct = TRUE)
+#using lemmatization instead of stemming (better results???)
+corpus$documents$texts=lemmatize_strings(corpus$documents$texts)
+gilead.dfm=dfm(corpus, remove = stoplist, stem = F, remove_punct =T)
 #View(gilead.dfm)                        
 
-topfeatures(gilead.dfm, 30)  # 30 top words
+topfeatures(gilead.dfm, 50)  # 50 top words
 
 #plot document feature matrix
 set.seed(100)
-textplot_wordcloud(gilead.dfm, min.freq = 6, random.order = FALSE,
+textplot_wordcloud(gilead.dfm, min.freq = 10, random.order = FALSE,
                    rot.per = .25, 
                    colors = RColorBrewer::brewer.pal(8,"Dark2"))
 
@@ -61,30 +63,43 @@ sum(corpus$documents$drug)
 
 data("lexicons")
 data("valence")
-myOwnLexicon=data.frame(w=c("success", "growth", "efficacy", "forwardlooking","respect"),
-                           s=c(2, 1.5, 2, 1.5,1))
 
 #### Create my own lexicon
 ### find top 30 most frequent words and exclude those that are already
 # in prefedined lexicons
 #tokens(corpus$documents$texts, remove_numbers = TRUE,  remove_punct = TRUE)
-gilead.dfm=dfm(corpus, remove = stoplist, stem = F, remove_punct = TRUE)
-View(gilead.dfm)                        
-
-top30=topfeatures(gilead.dfm, 30)  # 30 top words
-top30=data.frame(word=names(top30),count=top30)
+top50=topfeatures(gilead.dfm, 50)  # 50 top words
+top50=data.frame(word=names(top50),count=top50)
 lexicon_LM=lexicons[c("LM_eng", "GI_eng", "HENRY_eng")]
-#no joins with current lexicons
-top30%>%anti_join(lexicon_LM[[1]]$x,lexicon_LM[[2]]$x,lexicon_LM[[3]]$x) 
+
+#regular expression matching for corpus specific phrases 
+a=str_extract(corpusFirm$text,"instead\\s*([a-zA-Z]+\\s*){1,5}safety")
+a=a[!is.na(a)] #remove texts that havent match the pattern
+a=base::strsplit(a, '"[:blank:]"') #split into phrases
+
+#reply
+myLexicon=data.frame(w=c(a,"approve","release","below average","loss of"
+                        ),
+                        s=c(rep(-1.5,length(a)), 2, 1,-1,-2))
+
+#remove "chronic" from lexicons since in pharma/bioscience topics it is 
+#not negative word, ???needs to be modified
+lexicon_LM[lexicon_LM$LM_eng$x=="chromic"]=NULL
+lexicon_LM[lexicon_LM$GI_eng$x=="chromic"]=NULL
+lexicon_LM[lexicon_LM$HENRY_eng$x=="chromic"]=NULL
   
-lexiconsIn=c(list(myOwnLexicon=myOwnLexicon),lexicons[c("LM_eng", "GI_eng", "HENRY_eng")])
+lexicon_LM[lexicon_LM$LM_eng$x=="disease"]=NULL
+lexicon_LM[lexicon_LM$GI_eng$x=="disease"]=NULL
+lexicon_LM[lexicon_LM$HENRY_eng$x=="disease"]=NULL
+
+lexiconsIn=c(list(myLexicon=myLexicon),lexicons_LM=lexicons[c("LM_eng", "GI_eng", "HENRY_eng")])
 lexIn=sentometrics::setup_lexicons(lexiconsIn=lexiconsIn, 
                                       valenceIn=valence[["valence_eng"]], 
                                       do.split=FALSE)
 
 # define how you want the aggregation of textual
 # sentiment into time series to take place
-ctr <- sentometrics::ctr_agg(howWithin="tf-idf",
+ctr=sentometrics::ctr_agg(howWithin="tf-idf",
                              howDocs="equal_weight",
                              howTime=c("equal_weight", "linear"),
                              by="day",
