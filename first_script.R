@@ -152,9 +152,42 @@ plot(ctrMerged, group="features")
 
 # cluster the sentiment measures into two groups
 sent1=sentometrics::select_measures(ctrMerged, 
-                                    toSelect=c("LM_eng","myLexicon","oth_press"),
-                                    do.combine = T)
-                                            
+                                    toSelect=c("lexicons_LM.LM_eng","myLexicon","oth_press")
+                                    )
+#inspect the first cluster
+sent1$measures
+sent1$sentiment
+sent1$stats
+
+# cluster about drugs and health/pharma specific terms
+sent2=sentometrics::select_measures(ctrMerged, 
+                                    toSelect=c("lexicons_LM.LM_eng","myLexicon","drug_pharma")
+)
+
+#inspect the second cluster
+sent2$measures
+sent2$sentiment
+sent2$stats
+
+# cluster about stocks and shares
+sent3=sentometrics::select_measures(ctrMerged, 
+                                    toSelect=c("lexicons_LM.HENRY_eng","myLexicon","stock_news")
+)
+
+#inspect the second cluster
+sent3$measures
+sent3$sentiment
+sent3$stats
+
+# cluster about products and results
+sent4=sentometrics::select_measures(ctrMerged, 
+                                    toSelect=c("lexicons_LM.LM_eng","myLexicon","prod_results")
+)
+
+#inspect the second cluster
+sent4$measures
+sent4$sentiment
+sent4$stats
 
 sentMeasC1 <- sentometrics::select_measures(sentMeasMerged, toSelect="clust1")
 sentMeasC2 <- sentometrics::select_measures(sentMeasMerged, toSelect="clust2")
