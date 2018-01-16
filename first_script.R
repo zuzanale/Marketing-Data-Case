@@ -189,20 +189,10 @@ sent4$measures
 sent4$sentiment
 sent4$stats
 
-sentMeasC1 <- sentometrics::select_measures(sentMeasMerged, toSelect="clust1")
-sentMeasC2 <- sentometrics::select_measures(sentMeasMerged, toSelect="clust2")
-sentMeasC3 <- sentometrics::select_measures(sentMeasMerged, toSelect="clust3")
-
-sentMeasC2$measures
-sentMeasC2$sentiment
-sentMeasC2$stats
-
-sentMeasC1$measures
-sentMeasC1$sentiment
-sentMeasC1$stats
-plot(sentMeasC1, group="features")
-plot(sentMeasC2, group="features")
-plot(sentMeasC3, group="features")
+plot(sent1, group="features")
+plot(sent2, group="features")
+plot(sent3, group="features")
+plot(sent4, group="features")
 
 # make two global sentiment indices (one for each 
 # cluster); set the weights according to
