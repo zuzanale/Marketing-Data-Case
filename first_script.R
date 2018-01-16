@@ -68,18 +68,18 @@ data("valence")
 ### find top 30 most frequent words and exclude those that are already
 # in prefedined lexicons
 #tokens(corpus$documents$texts, remove_numbers = TRUE,  remove_punct = TRUE)
-top50=topfeatures(gilead.dfm, 50)  # 50 top words
-top50=data.frame(word=names(top50),count=top50)
+#top50=topfeatures(gilead.dfm, 50)  # 50 top words
+#top50=data.frame(word=names(top50),count=top50)
 lexicon_LM=lexicons[c("LM_eng", "GI_eng", "HENRY_eng")]
 
 #regular expression matching for corpus specific phrases 
 a=str_extract(corpusFirm$text,"instead\\s*([a-zA-Z]+\\s*){1,5}safety")
 a=a[!is.na(a)] #remove texts that havent match the pattern
-a=base::strsplit(a, '"[:blank:]"') #split into phrases
+a=unlist(base::strsplit(a, '"[:blank:]"')) #split into phrases
 
 #reply
-myLexicon=data.frame(w=c(a,"approve","release","below average","loss of"
-                        ),
+myLexicon=data.frame(w=c(a,c("approve","release","below average","loss of"
+                        )),
                         s=c(rep(-1.5,length(a)), 2, 1,-1,-2))
 
 #remove "chronic" from lexicons since in pharma/bioscience topics it is 
@@ -100,36 +100,62 @@ lexIn=sentometrics::setup_lexicons(lexiconsIn=lexiconsIn,
 # define how you want the aggregation of textual
 # sentiment into time series to take place
 ctr=sentometrics::ctr_agg(howWithin="tf-idf",
-                             howDocs="equal_weight",
-                             howTime=c("equal_weight", "linear"),
+                             howDocs="proportional",
+                             howTime=c("equal_weight", "linear","almon"),
                              by="day",
-                             lag=180,
+                             lag=100,
                              do.ignoreZeros=TRUE,
-                             fill="latest")
+                             fill="latest",ordersAlm=1:3,
+                          do.normalizeAlm=TRUE)
 
 # compute all sentiment measures and plot for inspection
-sentMeas <- sentometrics::sento_measures(corpus, lexicons=lexIn, ctr=ctr)
-plot(sentMeas, group="features")
-plot(scale(sentMeas), group="lexicons")
+sentMeas=sentometrics::sento_measures(corpus, lexicons=lexIn, ctr=ctr)
+plot(sentMeas, group="features")+
+  ggthemes::theme_base() +
+  scale_x_date(date_breaks ="25 months")
 
-sentMeasC1 <- sentometrics::select_measures(sentMeas, toSelect="pharma")
-plot(sentMeasC1, group="features")
+plot(sentMeas, group="lexicons")
 
-sentMeasC1 <- sentometrics::select_measures(sentMeas, toSelect="press")
-plot(sentMeasC1, group="features")
+#for loop doesnt work for some reason????
+par(mfrow=c(2,2))
+for(i in 1:length(sentMeas$features)){
+sent=sentometrics::select_measures(sentMeas, toSelect=sentMeas$features[i])
+plot(sent, group="features") 
+}
 
-sentMeasC1 <- sentometrics::select_measures(sentMeas, toSelect="products")
-plot(sentMeasC1, group="features")
+sent=sentometrics::select_measures(sentMeas, toSelect=sentMeas$features[1])
+plot(sent, group="features")
+sent=sentometrics::select_measures(sentMeas, toSelect=sentMeas$features[2])
+plot(sent, group="features")
 
-sentMeasC1 <- sentometrics::select_measures(sentMeas, toSelect="results")
-plot(sentMeasC1, group="features")
+sent=sentometrics::select_measures(sentMeas, toSelect=sentMeas$features[3])
+plot(sent, group="features")
+
+sent=sentometrics::select_measures(sentMeas, toSelect=sentMeas$features[4])
+plot(sent, group="features")
+sent=sentometrics::select_measures(sentMeas, toSelect=sentMeas$features[5])
+plot(sent, group="features")
+sent=sentometrics::select_measures(sentMeas, toSelect=sentMeas$features[6])
+plot(sent, group="features")
+sent=sentometrics::select_measures(sentMeas, toSelect=sentMeas$features[7])
+plot(sent, group="features")
+sent=sentometrics::select_measures(sentMeas, toSelect="drug")
+plot(sent, group="features")
+
+#clusters determined by inspection of individual graphs
+ctrMerge=sentometrics::ctr_merge(sentMeas,features=list(oth_press=c("other", "press"),
+                                                        stock_news=c("stocks", "news"),
+                                                        prod_results=c("products", "results"),
+                                                        drug_pharma=c("drug","pharma")))
+ctrMerged=sentometrics::merge_measures(ctrMerge)
+plot(ctrMerged, group="features")
 
 # cluster the sentiment measures into two groups
-ctrMerge <- sentometrics::ctr_merge(sentMeas, features=list(clust1=c("pharma", "press","results"),
-                                                            clust2=c("stocks", "web"),
-                                                            clust3=c("products", "news")))
-sentMeasMerged <- sentometrics::merge_measures(ctrMerge)
-sentMeasMerged$features # new features
+sent1=sentometrics::select_measures(ctrMerged, 
+                                    toSelect=c("LM_eng","myLexicon","oth_press"),
+                                    do.combine = T)
+                                            
+
 sentMeasC1 <- sentometrics::select_measures(sentMeasMerged, toSelect="clust1")
 sentMeasC2 <- sentometrics::select_measures(sentMeasMerged, toSelect="clust2")
 sentMeasC3 <- sentometrics::select_measures(sentMeasMerged, toSelect="clust3")
