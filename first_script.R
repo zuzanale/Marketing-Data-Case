@@ -4,35 +4,81 @@ str(corpusFirm) #get structure and data types of the data object
 head(unique(corpusFirm$date))
 
 library("sentometrics") # needs to be a data frame to work!!!
-#features <- colnames(corpusFirm)[-1:-2] #throw away ids and dates
+library(stringr) # forregex adjustments
+library(stopwords) #SnowbalC stopwords
+library(quanteda)
+
+library(tidyverse) #usually used for sentometrics analysis 
+library(tidytext) 
+
+features <- colnames(corpusFirm)[-1:-2] #throw away ids and dates
 
 # plug the full corpus into the sento_corpus() constructor
 corpus <- sentometrics::sento_corpus(corpusFirm)
 str(corpus)
 corpus$documents$texts[1]
 
+###explore features from corpus
+#construct document-frequency matrix, similar as DocumentTermMatrix
+#from tm package
+#stop words
+stoplist=stopwords('en')
+stoplist[(length(stoplist)+1):(length(stoplist)+3)]=c("www","https","http")
+
+#removing the possessive ending: ’s and non alphabetical characters
+corpus$documents$texts=str_replace_all(corpus$documents$texts, "(^')|('s$)|[^[:alpha:]+[:blank:]]"," ")
+
+gilead.dfm=dfm(corpus, remove = stoplist, stem = TRUE, remove_punct = TRUE)
+View(gilead.dfm)                        
+
+topfeatures(gilead.dfm, 30)  # 30 top words
+
+#plot document feature matrix
+set.seed(100)
+textplot_wordcloud(gilead.dfm, min.freq = 6, random.order = FALSE,
+                   rot.per = .25, 
+                   colors = RColorBrewer::brewer.pal(8,"Dark2"))
+
+
 # create an additional feature based on a 
 # keywords occurrence search (all the texts
 # are formatted into lowercase, so make sure
 # the keywords are as well)
 corpus <- sentometrics::add_features(corpus, 
-                                     keywords=list(pharma=
-                                        c("patient", "compound", "bioscience","genotyp","method"),
-                                        stocks=c("stock","gild","trade","rate","return",
-                                                 "call","buy"),
-                                        drug=c("hiv","viread","truvada","regimen","tenofovir","artipla",
-                                               "table")))
+            keywords=list(pharma=c("patient", "compound", "bioscience",
+                                   "genotyp","method","trademark","formula",
+                                   "application","requirement"),
+                          stocks=c("stock","shares","gild","price",
+                              "trade","rate","return","net",
+                              "bilion","call","buy"),
+                          drug=c("hiv","study","viread","truvada",
+                                 "hepatitis","percent","pharmaceuticals",
+                                 "tenofovir","sales","regimen",
+                                               "hbv")))
 sum(corpus$documents$pharma)
 sum(corpus$documents$stocks)
 sum(corpus$documents$drug)
 
 data("lexicons")
 data("valence")
-myOwnLexicon <- data.frame(w=c("success", "growth", "efficacy", "forwardlooking"),
-                           s=c(2, 1.5, 2, 1.5))
+myOwnLexicon=data.frame(w=c("success", "growth", "efficacy", "forwardlooking","respect"),
+                           s=c(2, 1.5, 2, 1.5,1))
 
-lexiconsIn <- c(list(myOwnLexicon=myOwnLexicon), lexicons[c("LM_eng", "GI_eng", "HENRY_eng")])
-lexIn <- sentometrics::setup_lexicons(lexiconsIn=lexiconsIn, 
+#### Create my own lexicon
+### find top 30 most frequent words and exclude those that are already
+# in prefedined lexicons
+#tokens(corpus$documents$texts, remove_numbers = TRUE,  remove_punct = TRUE)
+gilead.dfm=dfm(corpus, remove = stoplist, stem = F, remove_punct = TRUE)
+View(gilead.dfm)                        
+
+top30=topfeatures(gilead.dfm, 30)  # 30 top words
+top30=data.frame(word=names(top30),count=top30)
+lexicon_LM=lexicons[c("LM_eng", "GI_eng", "HENRY_eng")]
+#no joins with current lexicons
+top30%>%anti_join(lexicon_LM[[1]]$x,lexicon_LM[[2]]$x,lexicon_LM[[3]]$x) 
+  
+lexiconsIn=c(list(myOwnLexicon=myOwnLexicon),lexicons[c("LM_eng", "GI_eng", "HENRY_eng")])
+lexIn=sentometrics::setup_lexicons(lexiconsIn=lexiconsIn, 
                                       valenceIn=valence[["valence_eng"]], 
                                       do.split=FALSE)
 
