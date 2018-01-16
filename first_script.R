@@ -29,7 +29,7 @@ stoplist[(length(stoplist)+1):(length(stoplist)+3)]=c("www","https","http")
 corpus$documents$texts=str_replace_all(corpus$documents$texts, "(^')|('s$)|[^[:alpha:]+[:blank:]]"," ")
 
 gilead.dfm=dfm(corpus, remove = stoplist, stem = TRUE, remove_punct = TRUE)
-View(gilead.dfm)                        
+#View(gilead.dfm)                        
 
 topfeatures(gilead.dfm, 30)  # 30 top words
 
