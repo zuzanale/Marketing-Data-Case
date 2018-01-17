@@ -7,12 +7,12 @@ my_compute_sentiment=function(sentocorpus, lexicons,remove = stoplist,how = get_
   # lexicons= c(list(myLexicon=myLexicon),lexicons[c("LM_eng", "GI_eng", "HENRY_eng")] )
   # lex_terms=list(myLexicon=myLexicon)
   
-  check_class(sentocorpus, "sentocorpus")
+  sentometrics:::check_class(sentocorpus, "sentocorpus")
   if (length(how) > 1) 
     how <- how[1]
   if ("valence" %in% names(lexicons)) {
     cat("Modify corpus to account for valence words... ")
-    quanteda::texts(sentocorpus) <- include_valence(quanteda::texts(sentocorpus), 
+    quanteda::texts(sentocorpus) <- sentometrics:::include_valence(quanteda::texts(sentocorpus), 
                                                     lexicons[["valence"]])
     cat("Done.", "\n")
   }
@@ -71,7 +71,7 @@ my_compute_sentiment=function(sentocorpus, lexicons,remove = stoplist,how = get_
   s <- as.data.table(cbind(id = quanteda::docnames(sentocorpus), 
                            quanteda::docvars(sentocorpus), word_count = wCounts, 
                            s))
-  sent <- get_features_sentiment(s, features, lexNames)
+  sent <- sentometrics:::get_features_sentiment(s, features, lexNames)
   sent <- sent[order(date)]
   cat("Done.", "\n")
   sentOut <- list(corpus = sentocorpus, sentiment = sent, features = features, 
@@ -82,7 +82,7 @@ my_compute_sentiment=function(sentocorpus, lexicons,remove = stoplist,how = get_
 ###define mine sento measures funtion 
 my_sento_measures=function (sentocorpus, lexicons, ctr,remove) 
 {
-  check_class(sentocorpus, "sentocorpus")
+  sentometrics:::check_class(sentocorpus, "sentocorpus")
   toAgg <- my_compute_sentiment(sentocorpus, lexicons,remove, how = ctr$howWithin)
   sentomeasures <- perform_agg(toAgg, ctr)
   return(sentomeasures)

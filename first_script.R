@@ -295,7 +295,7 @@ ctr=sentometrics::ctr_agg(howWithin="tf-idf",
 # with self defined function including terms with multiple words
 # and regular expressions
 sentMeas=my_sento_measures(corpus, lexicons=lexIn,remove=stoplist,ctr=ctr)
-sentMeas=sentometrics::sento_measures(corpus, lexicons=lexIn,ctr=ctr)
+#sentMeas=sentometrics::sento_measures(corpus, lexicons=lexIn,ctr=ctr)
 plot(sentMeas, group="features")+
   ggthemes::theme_base() +
   scale_x_date(date_breaks ="25 months")
@@ -315,11 +315,13 @@ ctrMerge=sentometrics::ctr_merge(sentMeas,features=list(oth_press=c("other", "pr
                                                         prod_results=c("products", "results"),
                                                         drug_pharma=c("drug","pharma")))
 ctrMerged=sentometrics::merge_measures(ctrMerge)
+
 plot(ctrMerged, group="features")
 
 # cluster the sentiment measures into two groups
 sent1=sentometrics::select_measures(ctrMerged, 
-                                    toSelect=c("LM","myLexicon","oth_press")
+                                    toSelect=c("LM","myLexicon","oth_press"),
+                                    do.combine=FALSE
                                     )
 #inspect the first cluster
 sent1$measures
@@ -328,8 +330,8 @@ sent1$stats
 
 # cluster about drugs and health/pharma specific terms
 sent2=sentometrics::select_measures(ctrMerged, 
-                                    toSelect=c("LM","myLexicon","drug_pharma")
-)
+                                    toSelect=c("LM","myLexicon","drug_pharma"),
+                                               do.combine=FALSE)
 
 #inspect the second cluster
 sent2$measures
@@ -338,7 +340,8 @@ sent2$stats
 
 # cluster about stocks and shares
 sent3=sentometrics::select_measures(ctrMerged, 
-                                    toSelect=c("HENRY","myLexicon","stock_news")
+                                    toSelect=c("HENRY","myLexicon","stock_news"),
+                                    do.combine=FALSE
 )
 
 #inspect the second cluster
@@ -348,7 +351,8 @@ sent3$stats
 
 # cluster about products and results
 sent4=sentometrics::select_measures(ctrMerged, 
-                                    toSelect=c("LM","myLexicon","prod_results")
+                                    toSelect=c("LM","myLexicon","prod_results"),
+                                    do.combine=FALSE
 )
 
 #inspect the second cluster
@@ -362,16 +366,17 @@ plot(sent3, group="features")
 plot(sent4, group="features")
 
 # make two global sentiment indices (one for each 
-# cluster); set the weights according to
-# which lexicons and time aggregation schemes
-# are more important according to you
-lexWeights <- c(0.40, 0.20, 0.20, 0.20) # do sentMeas$lexicons to see the ordering of the lexicons
-globC1 <- sentometrics::to_global(sentMeasC1, lexicons=lexWeights)
-globC2 <- sentometrics::to_global(sentMeasC2)
-globC3 <- sentometrics::to_global(sentMeasC3)
+# cluster); 
+#set the weights 
+#lexWeights <- c(0.40, 0.20, 0.20, 0.20) # do sentMeas$lexicons to see the ordering of the lexicons
+globC1=sentometrics::to_global(sent1)
+globC2=sentometrics::to_global(sent2)
+globC3=sentometrics::to_global(sent3)
+globC3=sentometrics::to_global(sent4)
 plot(x=as.Date(row.names(globC1)), y=globC1$global, type="l", xlab="DATE", ylab="SENTIMENT", ylim=c(-0.01, 0.03))
 lines(x=as.Date(row.names(globC1)), y=globC2$global, col="red")
 lines(x=as.Date(row.names(globC1)), y=globC3$global, col="blue")
+lines(x=as.Date(row.names(globC1)), y=globC3$global, col="green")
 
 # make a relative (spread) index,
 #spread not really relevant in case of three clusters
