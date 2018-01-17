@@ -62,6 +62,8 @@ sum(corpus$documents$pharma)
 sum(corpus$documents$stocks)
 sum(corpus$documents$drug)
 
+data("lexicons")
+data("valence")
 
 ###Create my own lexicon
 #define events matrix
@@ -77,10 +79,7 @@ date= as.Date(c("2015-05-01","2015-11-01","2016-03-01","2016-04-01",
                 "2017-08-01","2014-07-11","2013-12-06","2014-12-06",
                 "2016-12-14")
                 ))
-
-################################################################
-#reformat for month-year matching events to texts in corpus
-
+#function for texts selection
 check_events=function(event.id,timeline,corpus){
   #the function to find documents publish the same month as specific
   # events define in timeline df happened
@@ -90,6 +89,7 @@ check_events=function(event.id,timeline,corpus){
   #           that happened to a company
   # corpus - corpus of texts after pre-processing stage
   
+  #reformat for month-year matching events to texts in corpus
     corpus$documents$dateMonth=format(as.Date(corpus$documents$date),"%Y-%m")
     timeline$dateMonth=format(as.Date(timeline$date),"%Y-%m")
 
@@ -101,10 +101,37 @@ check_events=function(event.id,timeline,corpus){
 }
 
 #call the function to find a document
-check_events(13,timeline,corpus)
-length(check_events(13,timeline,corpus)[[2]]) #number of found articles
-  
-#pick texts with correspoding events on timeline
+event.date=check_events(6,timeline,corpus)[[1]]
+check_events(6,timeline,corpus)
+length(check_events(6,timeline,corpus)[[2]]) #number of found articles
+
+#important words
+##################################################
+####compute sentiment scores for those texts #####
+##################################################
+
+lexiconsIn=c(lexicons[c("LM_eng", "GI_eng", "HENRY_eng")])
+lexIn=sentometrics::setup_lexicons(lexiconsIn=lexiconsIn, 
+                                   valenceIn=valence[["valence_eng"]], 
+                                   do.split=FALSE)
+
+# define how you want the aggregation of textual
+# sentiment into time series to take place
+ctr=sentometrics::ctr_agg(howWithin="tf-idf",
+                          howDocs="equal_weight",
+                          howTime=c("equal_weight", "linear","almon"),
+                          by="day",
+                          #lag=100,
+                          do.ignoreZeros=TRUE,
+                          fill="latest",ordersAlm=1:3,
+                          do.normalizeAlm=TRUE, do.inverseAlm = T)
+
+# compute all sentiment measures for selected articles
+sentMeas=sentometrics::sento_measures(corpus,
+                                      lexicons=lexIn, ctr=ctr)
+sentMeas.event=select_measures(sentMeas,
+                             dates=timeline$dateMonth[6])
+print(sentMeas.event)
 #important words
 list(timeline$event[6]=timeline$event[6],terms=c("grant patent","pharmaceutically acceptable"))
 
@@ -123,33 +150,24 @@ corpus$documents$texts[(corpus$documents$dateMonth %in% event)]
 
 #see articles for timeline$event[12] (law suit for high prices)
 #call the function to find a document
-check_events(6,timeline,corpus)
+check_events(12,timeline,corpus)
 
-#important words
-##################################################
-####compute sentiment scores for those texts #####
-##################################################
+# compute all sentiment measures for selected articles
+sentMeas=sentometrics::sento_measures(corpus,
+                                      lexicons=lexIn, ctr=ctr)
+sentMeas.event=select_measures(sentMeas,
+                               dates=timeline$dateMonth[12])
+#summarized measures based on different features and dictionaries
+print(sentMeas.event$measures)
+print(to_global(sentMeas)) #print all components across the dimensions
+print(sentMeas.event$sentiment) 
 
-lexiconsIn=c(lexicons[c("LM_eng", "GI_eng", "HENRY_eng")])
-lexIn=sentometrics::setup_lexicons(lexiconsIn=lexiconsIn, 
-                                   valenceIn=valence[["valence_eng"]], 
-                                   do.split=FALSE)
-
-# define how you want the aggregation of textual
-# sentiment into time series to take place
-ctr=sentometrics::ctr_agg(howWithin="tf-idf",
-                          howDocs="proportional",
-                          howTime=c("equal_weight", "linear","almon"),
-                          by="day",
-                          lag=100,
-                          do.ignoreZeros=TRUE,
-                          fill="latest",ordersAlm=1:3,
-                          do.normalizeAlm=TRUE)
-
+######################################################
+#check if selected terms are in default dictionaries
 list(timeline$event[12]=timeline$event[12],terms=c("rise cost of medicine","share sink",
                                                    ""))
 #check if those words are in our lexicons
-tocheck = c("grant","acceptable")
+tocheck = c("rise","cost","sink")
 (tocheck %in% lexicons$LM_eng$x)
 (tocheck %in% lexicons$GI_eng$x) # only the second one is there
 (tocheck %in% lexicons$HENRY_eng$x)
@@ -163,9 +181,6 @@ tocheck = c("grant","acceptable")
 (tocheck %in% lexicons$LM_eng$x)
 (tocheck %in% lexicons$GI_eng$x) # only the second one is there
 (tocheck %in% lexicons$HENRY_eng$x)
-
-data("lexicons")
-data("valence")
 
 #### Create my own lexicon
 ### find top 30 most frequent words and exclude those that are already
