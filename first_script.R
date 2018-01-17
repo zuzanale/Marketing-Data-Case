@@ -1,12 +1,15 @@
-setwd("C:/Users/lezuz/OneDrive/Documents/VU/Marketing Data Case/scripts")
-rm(list=ls(all=TRUE)) # clean repository
+#set working directories
+setwd("C:/Users/lezuz/OneDrive/Documents/Marketing-Data-Case")
+# clean repository
+rm(list=ls(all=TRUE)) 
 
 #load Gilead corpus
 load("CORPUS_GILEAD.rda")
 str(corpusFirm) #get structure and data types of the data object
 head(unique(corpusFirm$date))
 
-library("sentometrics") # needs to be a data frame to work!!!
+#load needed libraries
+library(sentometrics) # needs to be a data frame to work!!!
 library(stringr) # forregex adjustments
 library(stopwords) #SnowbalC stopwords
 library(quanteda)
@@ -36,7 +39,6 @@ stoplist[(length(stoplist)+1):(length(stoplist)+4)]=c("www","https","http","http
 
 #removing the possessive ending: ’s and non alphabetical characters
 #this is also done in compute_sentiment() part
-corpus=corpus # create a corpus duplicate
 corpus$documents$texts=str_replace_all(corpus$documents$texts, "(^')|('s$)|[^[:alpha:]+[:blank:]]"," ")
 
 #using lemmatization instead of stemming (better results???), 
@@ -298,11 +300,13 @@ sentMeas=my_sento_measures(corpus, lexicons=lexIn,remove=stoplist,ctr=ctr)
 #sentMeas=sentometrics::sento_measures(corpus, lexicons=lexIn,ctr=ctr)
 plot(sentMeas, group="features")+
   ggthemes::theme_base() +
+  scale_y_continuous(limits = c(-0.03,0.07))+
   scale_x_date(date_breaks ="25 months")
 
+#check results based on different lexicons
 plot(sentMeas, group="lexicons")
 
-#for loop doesnt work for some reason????
+#plot for each feature individually
 #par(mfrow=c(2,2))
 for(i in 1:length(sentMeas$features)){
 sent=sentometrics::select_measures(sentMeas, toSelect=sentMeas$features[i])
@@ -314,6 +318,7 @@ ctrMerge=sentometrics::ctr_merge(sentMeas,features=list(oth_press=c("other", "pr
                                                         stock_news=c("stocks", "news"),
                                                         prod_results=c("products", "results"),
                                                         drug_pharma=c("drug","pharma")))
+#plot the clustered features
 ctrMerged=sentometrics::merge_measures(ctrMerge)
 
 plot(ctrMerged, group="features")
