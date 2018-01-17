@@ -2,9 +2,6 @@
 ##### ###visualization of LDA model ##########################
 ##############################################################
 
-#load results from LDA topic modelling
-load(Environment.RData)
-
 #instal for loading JSON file in explorer, if it doesnt work
 #install.packages('servr') 
 
@@ -42,4 +39,8 @@ topicmodels_json_ldavis=function(fitted, corpus, doc_term){
 
 #supply fitted model, corpus and document term matrix
 gilead.json=topicmodels_json_ldavis(model$DTM_model, corpusFirm, model$gilead_DTM)
-serVis(gilead.json)
+
+# to see only locally in temp file
+serVis(gilead.json) 
+# to share to HTML
+serVis(gilead.json,out.dir = 'vis',as.gist=T) 
