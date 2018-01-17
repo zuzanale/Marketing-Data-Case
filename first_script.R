@@ -135,7 +135,7 @@ ctr=sentometrics::ctr_agg(howWithin="tf-idf",
 
 # compute all sentiment measures for selected articles
 event.date=format(as.Date(timeline$date[6]),"%Y-%m")
-corpus.event = quanteda::corpus_subset(corpus,format(as.Date(date),"%Y-%m") %in% event.date)
+corpus.event=quanteda::corpus_subset(corpus,format(as.Date(date),"%Y-%m") %in% event.date)
 sentMeas.event=sentometrics::sento_measures(corpus.event,
                                       lexicons=lexIn, ctr=ctr)
 
@@ -174,9 +174,11 @@ print(sentMeas.event$sentiment)
 
 #check if selected terms are in default dictionaries
 list(timeline$event[12]=timeline$event[12],terms=c("rise cost of medicine","share sink",
-                                                 ""))
+                                                 "not be able to recover",
+                                                 "overweight","",""
+                                                 ))
 #check if those words are in our lexicons
-tocheck = c("rise","cost","sink")
+tocheck = c("rise","cost","sink","overweight")
 (tocheck %in% lexicons$LM_eng$x)
 (tocheck %in% lexicons$GI_eng$x) # only the second one is there
 (tocheck %in% lexicons$HENRY_eng$x)
@@ -233,12 +235,22 @@ a=unique(unlist(base::strsplit(a,'"[:blank:]"'))) #split into phrases and pick o
 b=str_extract(corpus$documents$texts,"grant+\\s+patent\\s*([a-zA-Z]+\\s*){1,4}to+\\s+gilead")
 b=b[!is.na(b)] #remove texts that havent match the pattern
 b=unique(unlist(base::strsplit(b,'"[:blank:]"'))) #split into phrases and pick only unique phrase
+c=str_extract(corpus$documents$texts,
+              "\\bsuccessfully\\b\\s*?\\b(develop|approve)(?:\\W+\\w+){0,2}?\\W+(develop|approve)\\b")
+c=c[!is.na(c)] #remove texts that havent match the pattern
+c=unique(unlist(base::strsplit(c,'"[:blank:]"'))) #split into phrases and pick only unique phrase
+d=str_extract(corpus$documents$texts,
+              "\\b(tolerate|accept)(?:\\W+\\w+){0,2}?\\W+(risk)\\b")
+d=d[!is.na(d)] #remove texts that havent match the pattern
+d=unique(unlist(base::strsplit(d,'"[:blank:]"'))) #split into phrases and pick only unique phrase
 
 #reply
-myLexicon=data.frame(w=c(c(a,b),c("approve","release","below average","loss of",
+myLexicon=data.frame(w=c(c(a,b,c),c("approve","release","below average","loss of",
                              "develop new drug", "late stage study"
                         )),
-                        s=c(rep(-2,length(a)), rep(-2,length(b)),2, 1,-1,-2,2,1.5))
+                        s=c(rep(-2,length(a)),rep(2,length(b)),
+                            rep(3,length(c)),rep(-3,length(d)),
+                            2, 1,-1,-2,2,1.5))
 
 #remove "chronic" from lexicons since in pharma/bioscience topics it is 
 #not negative word, ???needs to be modified
