@@ -69,13 +69,15 @@ timeline=data.frame(event=c("Copenhagen.acquisition","Genvoya.approval",
                    " Odefsey.approval",
                    "Descovy.approval","Epclusa.approval",
                    "Vemlidy.approval","Vosevi.approval",
-                   "Yescarta.approval","SantaMonica.acquisition"),
+                   "Yescarta.approval","SantaMonica.acquisition","Sovaldi.highprice",
+                   "Sovaldi.approval","lawsuit.highprice"),
 date= as.Date(c("2015-05-01","2015-11-01","2016-03-01","2016-04-01",
                 "2016-06-01",
                 "2016-11-01","2017-07-01","2017-10-01",
-                "2017-08-01"
-                )))
+                "2017-08-01","2014-07-11","2013-12-06","2014-12-06")
+                ))
 
+################################################################
 #reformat for month-year matching events to texts in corpus
 corpus$documents$dateMonth=format(as.Date(corpus$documents$date),"%Y-%m")
 timeline$dateMonth=format(as.Date(timeline$date),"%Y-%m")
@@ -94,6 +96,13 @@ tocheck = c("grant","acceptable")
 (tocheck %in% lexicons$LM_eng$x)
 (tocheck %in% lexicons$GI_eng$x) # only the second one is there
 (tocheck %in% lexicons$HENRY_eng$x)
+
+#compute sentiment scores for this event
+
+#see articles for timeline$event[12] (Vemlidy.approval)
+event=timeline$dateMonth[10]
+#see texts published same month as event occure
+corpus$documents$texts[(corpus$documents$dateMonth %in% event)]
 
 data("lexicons")
 data("valence")
