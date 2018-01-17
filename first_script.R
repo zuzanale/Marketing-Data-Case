@@ -70,23 +70,40 @@ timeline=data.frame(event=c("Copenhagen.acquisition","Genvoya.approval",
                    "Descovy.approval","Epclusa.approval",
                    "Vemlidy.approval","Vosevi.approval",
                    "Yescarta.approval","SantaMonica.acquisition","Sovaldi.highprice",
-                   "Sovaldi.approval","lawsuit.highprice"),
+                   "Sovaldi.approval","lawsuit.highprice","express.deal"),
 date= as.Date(c("2015-05-01","2015-11-01","2016-03-01","2016-04-01",
                 "2016-06-01",
                 "2016-11-01","2017-07-01","2017-10-01",
-                "2017-08-01","2014-07-11","2013-12-06","2014-12-06")
+                "2017-08-01","2014-07-11","2013-12-06","2014-12-06",
+                "2016-12-14")
                 ))
 
 ################################################################
 #reformat for month-year matching events to texts in corpus
-corpus$documents$dateMonth=format(as.Date(corpus$documents$date),"%Y-%m")
-timeline$dateMonth=format(as.Date(timeline$date),"%Y-%m")
 
-#see articles for timeline$event[6] (Vemlidy.approval)
-event=timeline$dateMonth[6]
-#see texts published same month as event occure
-corpus$documents$texts[(corpus$documents$dateMonth %in% event)]
+check_events=function(event.id,timeline,corpus){
+  #the function to find documents publish the same month as specific
+  # events define in timeline df happened
+  #
+  # event.id - index of event (rownumber) from timeline data.frame
+  # timeline - data frame with each row corresponding to important event
+  #           that happened to a company
+  # corpus - corpus of texts after pre-processing stage
+  
+    corpus$documents$dateMonth=format(as.Date(corpus$documents$date),"%Y-%m")
+    timeline$dateMonth=format(as.Date(timeline$date),"%Y-%m")
 
+    #see articles for timeline$event[event.id] eg.(Vemlidy.approval)
+    event.date=timeline$dateMonth[event.id]
+    #see texts published same month as event occure
+    document.events=corpus$documents$texts[(corpus$documents$dateMonth %in% event.date)]
+    return(list(event.date,document.events))
+}
+
+#call the function to find a document
+check_events(13,timeline,corpus)
+length(check_events(13,timeline,corpus)[[2]]) #number of found articles
+  
 #pick texts with correspoding events on timeline
 #important words
 list(timeline$event[6]=timeline$event[6],terms=c("grant patent","pharmaceutically acceptable"))
@@ -99,10 +116,53 @@ tocheck = c("grant","acceptable")
 
 #compute sentiment scores for this event
 
-#see articles for timeline$event[12] (Vemlidy.approval)
+#see articles for timeline$event[10] (high prices)
 event=timeline$dateMonth[10]
 #see texts published same month as event occure
 corpus$documents$texts[(corpus$documents$dateMonth %in% event)]
+
+#see articles for timeline$event[12] (law suit for high prices)
+#call the function to find a document
+check_events(6,timeline,corpus)
+
+#important words
+##################################################
+####compute sentiment scores for those texts #####
+##################################################
+
+lexiconsIn=c(lexicons[c("LM_eng", "GI_eng", "HENRY_eng")])
+lexIn=sentometrics::setup_lexicons(lexiconsIn=lexiconsIn, 
+                                   valenceIn=valence[["valence_eng"]], 
+                                   do.split=FALSE)
+
+# define how you want the aggregation of textual
+# sentiment into time series to take place
+ctr=sentometrics::ctr_agg(howWithin="tf-idf",
+                          howDocs="proportional",
+                          howTime=c("equal_weight", "linear","almon"),
+                          by="day",
+                          lag=100,
+                          do.ignoreZeros=TRUE,
+                          fill="latest",ordersAlm=1:3,
+                          do.normalizeAlm=TRUE)
+
+list(timeline$event[12]=timeline$event[12],terms=c("rise cost of medicine","share sink",
+                                                   ""))
+#check if those words are in our lexicons
+tocheck = c("grant","acceptable")
+(tocheck %in% lexicons$LM_eng$x)
+(tocheck %in% lexicons$GI_eng$x) # only the second one is there
+(tocheck %in% lexicons$HENRY_eng$x)
+
+#compute sentiment scores for this event
+
+
+
+#check if those words are in our lexicons
+tocheck = c("grant","acceptable")
+(tocheck %in% lexicons$LM_eng$x)
+(tocheck %in% lexicons$GI_eng$x) # only the second one is there
+(tocheck %in% lexicons$HENRY_eng$x)
 
 data("lexicons")
 data("valence")
