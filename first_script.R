@@ -1,4 +1,6 @@
 setwd("C:/Users/lezuz/OneDrive/Documents/VU/Marketing Data Case/scripts")
+
+#load Gilead corpus
 load("CORPUS_GILEAD.rda")
 str(corpusFirm) #get structure and data types of the data object
 head(unique(corpusFirm$date))
@@ -12,6 +14,10 @@ library(tidyverse) #usually used for sentometrics analysis
 library(tidytext) 
 library(gridExtra) #for multiple plots in one figure
 
+#load self-defined function for sentiment computation
+#(includes regular expression)
+source('~/Marketing-Data-Case/My_compute_sentiment.R')
+
 features=colnames(corpusFirm)[-1:-2] #throw away ids and dates
 
 # plug the full corpus into the sento_corpus() constructor
@@ -24,16 +30,17 @@ corpus$documents$texts[1]
 #from tm package
 #stop words
 stoplist=stopwords::stopwords('en')
-stoplist[(length(stoplist)+1):(length(stoplist)+3)]=c("www","https","http")
+stoplist[(length(stoplist)+1):(length(stoplist)+4)]=c("www","https","http","httpwww")
 
 #removing the possessive ending: ’s and non alphabetical characters
+#this is also done in compute_sentiment() part
+corpus=corpus # create a corpus duplicate
 corpus$documents$texts=str_replace_all(corpus$documents$texts, "(^')|('s$)|[^[:alpha:]+[:blank:]]"," ")
 
-#using lemmatization instead of stemming (better results???)
-corpus$documents$texts=lemmatize_strings(corpus$documents$texts)
+#using lemmatization instead of stemming (better results???), 
+corpus$documents$texts=textstem::lemmatize_strings(corpus$documents$texts)
 gilead.dfm=dfm(corpus, remove = stoplist, stem = F, remove_punct =T)
 #View(gilead.dfm)                        
-
 topfeatures(gilead.dfm, 50)  # 50 top words
 
 #plot document feature matrix
@@ -41,7 +48,6 @@ set.seed(100)
 textplot_wordcloud(gilead.dfm, min.freq = 10, random.order = FALSE,
                    rot.per = .25, 
                    colors = RColorBrewer::brewer.pal(8,"Dark2"))
-
 
 # create an additional feature based on a 
 # keywords occurrence search (all the texts
@@ -79,6 +85,7 @@ date= as.Date(c("2015-05-01","2015-11-01","2016-03-01","2016-04-01",
                 "2017-08-01","2014-07-11","2013-12-06","2014-12-06",
                 "2016-12-14")
                 ))
+
 #function for texts selection
 check_events=function(event.id,timeline,corpus){
   #the function to find documents publish the same month as specific
@@ -88,11 +95,11 @@ check_events=function(event.id,timeline,corpus){
   # timeline - data frame with each row corresponding to important event
   #           that happened to a company
   # corpus - corpus of texts after pre-processing stage
-  
-  #reformat for month-year matching events to texts in corpus
-    corpus$documents$dateMonth=format(as.Date(corpus$documents$date),"%Y-%m")
-    timeline$dateMonth=format(as.Date(timeline$date),"%Y-%m")
 
+  #reformat for month-year matching events to texts in corpus
+  corpus$documents$dateMonth=format(as.Date(corpus$documents$date),"%Y-%m")
+  timeline$dateMonth=format(as.Date(timeline$date),"%Y-%m")
+  
     #see articles for timeline$event[event.id] eg.(Vemlidy.approval)
     event.date=timeline$dateMonth[event.id]
     #see texts published same month as event occure
@@ -111,7 +118,7 @@ length(check_events(6,timeline,corpus)[[2]]) #number of found articles
 ##################################################
 
 lexiconsIn=c(lexicons[c("LM_eng", "GI_eng", "HENRY_eng")])
-lexIn=sentometrics::setup_lexicons(lexiconsIn=lexiconsIn, 
+lexIn=sentometrics::setup_lexicons(lexiconsIn=lexicons[c("LM_eng", "GI_eng", "HENRY_eng")], 
                                    valenceIn=valence[["valence_eng"]], 
                                    do.split=FALSE)
 
@@ -124,14 +131,18 @@ ctr=sentometrics::ctr_agg(howWithin="tf-idf",
                           #lag=100,
                           do.ignoreZeros=TRUE,
                           fill="latest",ordersAlm=1:3,
-                          do.normalizeAlm=TRUE, do.inverseAlm = T)
+                          do.normalizeAlm=TRUE, do.inverseAlm = TRUE)
 
 # compute all sentiment measures for selected articles
-sentMeas=sentometrics::sento_measures(corpus,
+event.date=format(as.Date(timeline$date[6]),"%Y-%m")
+corpus.event = quanteda::corpus_subset(corpus,format(as.Date(date),"%Y-%m") %in% event.date)
+sentMeas.event=sentometrics::sento_measures(corpus.event,
                                       lexicons=lexIn, ctr=ctr)
-sentMeas.event=select_measures(sentMeas,
-                             dates=timeline$dateMonth[6])
-print(sentMeas.event)
+
+print(sentMeas.event$measures)
+print(to_global(sentMeas)) #print all components across the dimensions
+print(sentMeas.event$sentiment) 
+
 #important words
 list(timeline$event[6]=timeline$event[6],terms=c("grant patent","pharmaceutically acceptable"))
 
@@ -140,8 +151,6 @@ tocheck = c("grant","acceptable")
 (tocheck %in% lexicons$LM_eng$x)
 (tocheck %in% lexicons$GI_eng$x) # only the second one is there
 (tocheck %in% lexicons$HENRY_eng$x)
-
-#compute sentiment scores for this event
 
 #see articles for timeline$event[10] (high prices)
 event=timeline$dateMonth[10]
@@ -153,27 +162,55 @@ corpus$documents$texts[(corpus$documents$dateMonth %in% event)]
 check_events(12,timeline,corpus)
 
 # compute all sentiment measures for selected articles
-sentMeas=sentometrics::sento_measures(corpus,
+event.date=format(as.Date(timeline$date[12]),"%Y-%m")
+corpus.event = quanteda::corpus_subset(corpus,format(as.Date(date),"%Y-%m") %in% event.date)
+sentMeas=sentometrics::sento_measures(corpus.event,
                                       lexicons=lexIn, ctr=ctr)
-sentMeas.event=select_measures(sentMeas,
-                               dates=timeline$dateMonth[12])
+
 #summarized measures based on different features and dictionaries
 print(sentMeas.event$measures)
 print(to_global(sentMeas)) #print all components across the dimensions
 print(sentMeas.event$sentiment) 
 
-######################################################
 #check if selected terms are in default dictionaries
 list(timeline$event[12]=timeline$event[12],terms=c("rise cost of medicine","share sink",
-                                                   ""))
+                                                 ""))
 #check if those words are in our lexicons
 tocheck = c("rise","cost","sink")
 (tocheck %in% lexicons$LM_eng$x)
 (tocheck %in% lexicons$GI_eng$x) # only the second one is there
 (tocheck %in% lexicons$HENRY_eng$x)
 
-#compute sentiment scores for this event
+#######
 
+#see articles for timeline$event[3] (Odefsey.approval)
+#call the function to find a document
+check_events(3,timeline,corpus)
+check_events(4,timeline,corpus)[[2]][1]#Descovy.approval. first article
+check_events(4,timeline,corpus)[[2]][2] #second article
+check_events(4,timeline,corpus)[[2]][3] #third article
+check_events(4,timeline,corpus)[[2]][4]  #fourth article
+
+# compute all sentiment measures for selected articles
+event.date=format(as.Date(timeline$date[4]),"%Y-%m")
+corpus.event = quanteda::corpus_subset(corpus,format(as.Date(date),"%Y-%m") %in% event.date)
+sentMeas=sentometrics::sento_measures(corpus.event,
+                                      lexicons=lexIn, ctr=ctr)
+
+#summarized measures based on different features and dictionaries
+print(sentMeas.event$measures)
+print(to_global(sentMeas)) #print all components across the dimensions
+print(sentMeas.event$sentiment) #LM and HENRY negative, GI positive
+
+######################################################
+#check if selected terms are in default dictionaries
+list(timeline$event[4]=timeline$event[4],terms=c("raise the risk","rather than ...development",
+                                                   ""))
+#check if those words are in our lexicons
+tocheck = c("must","risk","sink")
+(tocheck %in% lexicons$LM_eng$x)
+(tocheck %in% lexicons$GI_eng$x) # only the second one is there
+(tocheck %in% lexicons$HENRY_eng$x)
 
 
 #check if those words are in our lexicons
@@ -190,10 +227,10 @@ tocheck = c("grant","acceptable")
 #top50=data.frame(word=names(top50),count=top50)
 
 #regular expression matching for corpus specific phrases 
-a=str_extract(corpusFirm$text,"instead\\s*([a-zA-Z]+\\s*){1,5}safety")
+a=str_extract(corpus$documents$texts,"instead\\s*([a-zA-Z]+\\s*){1,5}safety")
 a=a[!is.na(a)] #remove texts that havent match the pattern
 a=unique(unlist(base::strsplit(a,'"[:blank:]"'))) #split into phrases and pick only unique phrase
-b=str_extract(corpus,"grant+\\s+patent\\s*([a-zA-Z]+\\s*){1,4}to+\\s+gilead")
+b=str_extract(corpus$documents$texts,"grant+\\s+patent\\s*([a-zA-Z]+\\s*){1,4}to+\\s+gilead")
 b=b[!is.na(b)] #remove texts that havent match the pattern
 b=unique(unlist(base::strsplit(b,'"[:blank:]"'))) #split into phrases and pick only unique phrase
 
@@ -201,7 +238,7 @@ b=unique(unlist(base::strsplit(b,'"[:blank:]"'))) #split into phrases and pick o
 myLexicon=data.frame(w=c(c(a,b),c("approve","release","below average","loss of",
                              "develop new drug", "late stage study"
                         )),
-                        s=c(rep(-1.5,length(a)), rep(-1.5,length(b)),2, 1,-1,-2,2,1.5))
+                        s=c(rep(-2,length(a)), rep(-2,length(b)),2, 1,-1,-2,2,1.5))
 
 #remove "chronic" from lexicons since in pharma/bioscience topics it is 
 #not negative word, ???needs to be modified
@@ -231,7 +268,9 @@ ctr=sentometrics::ctr_agg(howWithin="tf-idf",
                           do.normalizeAlm=TRUE)
 
 # compute all sentiment measures and plot for inspection
-sentMeas=sentometrics::sento_measures(corpus, lexicons=lexIn, ctr=ctr)
+# with self defined function including terms with multiple words
+# and regular expressions
+sentMeas=sentometrics::my_sento_measures(corpus, lexicons=lexIn, ctr=ctr)
 plot(sentMeas, group="features")+
   ggthemes::theme_base() +
   scale_x_date(date_breaks ="25 months")
