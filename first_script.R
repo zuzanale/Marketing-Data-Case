@@ -86,6 +86,14 @@ event=timeline$dateMonth[6]
 corpus$documents$texts[(corpus$documents$dateMonth %in% event)]
 
 #pick texts with correspoding events on timeline
+#important words
+list(timeline$event[6]=timeline$event[6],terms=c("grant patent","pharmaceutically acceptable"))
+
+#check if those words are in our lexicons
+tocheck = c("grant","acceptable")
+(tocheck %in% lexicons$LM_eng$x)
+(tocheck %in% lexicons$GI_eng$x) # only the second one is there
+(tocheck %in% lexicons$HENRY_eng$x)
 
 data("lexicons")
 data("valence")
@@ -100,13 +108,16 @@ data("valence")
 #regular expression matching for corpus specific phrases 
 a=str_extract(corpusFirm$text,"instead\\s*([a-zA-Z]+\\s*){1,5}safety")
 a=a[!is.na(a)] #remove texts that havent match the pattern
-a=unlist(base::strsplit(a, '"[:blank:]"')) #split into phrases
+a=unique(unlist(base::strsplit(a,'"[:blank:]"'))) #split into phrases and pick only unique phrase
+b=str_extract(corpus,"grant+\\s+patent\\s*([a-zA-Z]+\\s*){1,4}to+\\s+gilead")
+b=b[!is.na(b)] #remove texts that havent match the pattern
+b=unique(unlist(base::strsplit(b,'"[:blank:]"'))) #split into phrases and pick only unique phrase
 
 #reply
-myLexicon=data.frame(w=c(a,c("approve","release","below average","loss of",
+myLexicon=data.frame(w=c(c(a,b),c("approve","release","below average","loss of",
                              "develop new drug", "late stage study"
                         )),
-                        s=c(rep(-1.5,length(a)), 2, 1,-1,-2,2,1.5))
+                        s=c(rep(-1.5,length(a)), rep(-1.5,length(b)),2, 1,-1,-2,2,1.5))
 
 #remove "chronic" from lexicons since in pharma/bioscience topics it is 
 #not negative word, ???needs to be modified
