@@ -367,20 +367,52 @@ plot(sent4, group="features")
 
 # make two global sentiment indices (one for each 
 # cluster); 
-#set the weights 
+#set the weights, we want to keep them equal 
 #lexWeights <- c(0.40, 0.20, 0.20, 0.20) # do sentMeas$lexicons to see the ordering of the lexicons
 globC1=sentometrics::to_global(sent1)
 globC2=sentometrics::to_global(sent2)
 globC3=sentometrics::to_global(sent3)
-globC3=sentometrics::to_global(sent4)
+globC4=sentometrics::to_global(sent4)
 plot(x=as.Date(row.names(globC1)), y=globC1$global, type="l", xlab="DATE", ylab="SENTIMENT", ylim=c(-0.01, 0.03))
 lines(x=as.Date(row.names(globC1)), y=globC2$global, col="red")
 lines(x=as.Date(row.names(globC1)), y=globC3$global, col="blue")
-lines(x=as.Date(row.names(globC1)), y=globC3$global, col="green")
+lines(x=as.Date(row.names(globC1)), y=globC4$global, col="green")
 
 # make a relative (spread) index,
-#spread not really relevant in case of three clusters
-spread <- globC1 - globC2
-colnames(spread) <- "spread"
-plot(x=as.Date(row.names(spread)), y=spread$spread, type="l", xlab="DATE", ylab="SENTIMENT")
+spread1=globC1 - globC2
+spread2=globC3 - globC4
+spread3=globC1 - globC3
+spread4=globC1 - globC4
+spread5=globC2 - globC3
+spread6=globC2 - globC4
+
+colnames(spread1)="spread"
+plot(x=as.Date(row.names(spread1)),
+     main="Press & Other vs. Stocks & News",y=spread1$spread, type="l", xlab="DATE", ylab="SENTIMENT")
 abline(h=0, col="blue")
+
+colnames(spread2)="spread"
+plot(x=as.Date(row.names(spread2)), 
+     main="Products & Results vs. Drug & Pharma", y=spread2$spread, type="l", xlab="DATE", ylab="SENTIMENT")
+abline(h=0, col="blue")
+
+colnames(spread3)="spread"
+plot(x=as.Date(row.names(spread3)), 
+     main="Press & Other vs. Drug & Pharma",y=spread3$spread, type="l", xlab="DATE", ylab="SENTIMENT")
+abline(h=0, col="blue")
+
+colnames(spread4)="spread"
+plot(x=as.Date(row.names(spread4)),
+     main="Press & Other vs. Products & Results",y=spread4$spread, type="l", xlab="DATE", ylab="SENTIMENT")
+abline(h=0, col="blue")
+
+colnames(spread6)="spread"
+plot(x=as.Date(row.names(spread5)),
+     main="Stocks & News vs. Products & Results",y=spread5$spread, type="l", xlab="DATE", ylab="SENTIMENT")
+abline(h=0, col="blue")
+
+colnames(spread6)="spread"
+plot(x=as.Date(row.names(spread6)),
+     main="Stocks & News vs. Drug & Pharma",y=spread6$spread, type="l", xlab="DATE", ylab="SENTIMENT")
+abline(h=0, col="blue")
+
