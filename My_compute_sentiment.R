@@ -80,10 +80,10 @@ my_compute_sentiment=function(sentocorpus, lexicons,remove = stoplist,how = get_
 }
 
 ###define mine sento measures funtion 
-my_sento_measures=function (sentocorpus, lexicons, ctr) 
+my_sento_measures=function (sentocorpus, lexicons, ctr,remove) 
 {
   check_class(sentocorpus, "sentocorpus")
-  toAgg <- my_compute_sentiment(sentocorpus, lexicons, how = ctr$howWithin)
+  toAgg <- my_compute_sentiment(sentocorpus, lexicons,remove, how = ctr$howWithin)
   sentomeasures <- perform_agg(toAgg, ctr)
   return(sentomeasures)
 }
