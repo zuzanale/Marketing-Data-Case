@@ -1,4 +1,5 @@
 setwd("C:/Users/lezuz/OneDrive/Documents/VU/Marketing Data Case/scripts")
+rm(list=ls(all=TRUE)) # clean repository
 
 #load Gilead corpus
 load("CORPUS_GILEAD.rda")
@@ -12,7 +13,8 @@ library(quanteda)
 library(textstem) #package for lemmatization (overal better than stemming)
 library(tidyverse) #usually used for sentometrics analysis 
 library(tidytext) 
-library(gridExtra) #for multiple plots in one figure
+#library(gridExtra) #for multiple plots in one figure, will be in next release
+
 
 #load self-defined function for sentiment computation
 #(includes regular expression)
@@ -175,8 +177,7 @@ print(sentMeas.event$sentiment)
 #check if selected terms are in default dictionaries
 list(timeline$event[12]=timeline$event[12],terms=c("rise cost of medicine","share sink",
                                                  "not be able to recover",
-                                                 "overweight","",""
-                                                 ))
+                                                 "overweight"))
 #check if those words are in our lexicons
 tocheck = c("rise","cost","sink","overweight")
 (tocheck %in% lexicons$LM_eng$x)
@@ -206,8 +207,8 @@ print(sentMeas.event$sentiment) #LM and HENRY negative, GI positive
 
 ######################################################
 #check if selected terms are in default dictionaries
-list(timeline$event[4]=timeline$event[4],terms=c("raise the risk","rather than ...development",
-                                                   ""))
+list(timeline$event[4]=timeline$event[4],terms=c("raise the risk","rather than ...development"
+                                                 ))
 #check if those words are in our lexicons
 tocheck = c("must","risk","sink")
 (tocheck %in% lexicons$LM_eng$x)
@@ -243,17 +244,28 @@ d=str_extract(corpus$documents$texts,
               "\\b(tolerate|accept)(?:\\W+\\w+){0,2}?\\W+(risk)\\b")
 d=d[!is.na(d)] #remove texts that havent match the pattern
 d=unique(unlist(base::strsplit(d,'"[:blank:]"'))) #split into phrases and pick only unique phrase
+e=str_extract(corpus$documents$texts,
+              "\\b(raise|rise)(?:\\W+\\w+){0,2}?\\W+(risk)\\b")
+e=e[!is.na(e)] #remove texts that havent match the pattern
+e=unique(unlist(base::strsplit(e,'"[:blank:]"'))) #split into phrases and pick only unique phrase
+f=str_extract(corpus$documents$texts,
+              "\\b(rather)\\b\\s*?\\b(than)(?:\\W+\\w+){0,2}?\\W+(development)\\b")
+f=f[!is.na(f)] #remove texts that havent match the pattern
+f=unique(unlist(base::strsplit(f,'"[:blank:]"'))) #split into phrases and pick only unique phrase
 
 #reply
-myLexicon=data.frame(w=c(c(a,b,c),c("approve","release","below average","loss of",
-                             "develop new drug", "late stage study"
-                        )),
+myLexicon=data.frame(w=c(c(a,b,c,d,e,f),c("approve","release","below average","loss of",
+                             "develop new drug", "late stage study","rise cost of",
+                             "share sink","not be able to recover", "overweight",
+                             "must","high price","low return")
+                        ),
                         s=c(rep(-2,length(a)),rep(2,length(b)),
                             rep(3,length(c)),rep(-3,length(d)),
-                            2, 1,-1,-2,2,1.5))
+                            rep(-3,length(e)),rep(-2,length(f)),
+                            2, 2,-1,-2,2,1,-2,-1,-3,-2,-2,-3,-3))
 
 #remove "chronic" from lexicons since in pharma/bioscience topics it is 
-#not negative word, ???needs to be modified
+#not negative word
 toDelete = c("chromic","disease")
 LM_mod= lexicons$LM_eng[!(lexicons$LM_eng$x %in% toDelete)]
 GI_mod= lexicons$GI_eng[!(lexicons$GI_eng$x %in% toDelete)]
@@ -282,7 +294,8 @@ ctr=sentometrics::ctr_agg(howWithin="tf-idf",
 # compute all sentiment measures and plot for inspection
 # with self defined function including terms with multiple words
 # and regular expressions
-sentMeas=sentometrics::my_sento_measures(corpus, lexicons=lexIn, ctr=ctr)
+sentMeas=my_sento_measures(corpus, lexicons=lexIn,remove=stoplist,ctr=ctr)
+sentMeas=sentometrics::sento_measures(corpus, lexicons=lexIn,ctr=ctr)
 plot(sentMeas, group="features")+
   ggthemes::theme_base() +
   scale_x_date(date_breaks ="25 months")
@@ -293,28 +306,8 @@ plot(sentMeas, group="lexicons")
 #par(mfrow=c(2,2))
 for(i in 1:length(sentMeas$features)){
 sent=sentometrics::select_measures(sentMeas, toSelect=sentMeas$features[i])
-#plot(sent, group="features") 
-grid.arrange(plot(sent, group="features"), ncol=2)
+plot(sent,group="features")
 }
-
-sent=sentometrics::select_measures(sentMeas, toSelect=sentMeas$features[1])
-plot(sent, group="features")
-sent=sentometrics::select_measures(sentMeas, toSelect=sentMeas$features[2])
-plot(sent, group="features")
-
-sent=sentometrics::select_measures(sentMeas, toSelect=sentMeas$features[3])
-plot(sent, group="features")
-
-sent=sentometrics::select_measures(sentMeas, toSelect=sentMeas$features[4])
-plot(sent, group="features")
-sent=sentometrics::select_measures(sentMeas, toSelect=sentMeas$features[5])
-plot(sent, group="features")
-sent=sentometrics::select_measures(sentMeas, toSelect=sentMeas$features[6])
-plot(sent, group="features")
-sent=sentometrics::select_measures(sentMeas, toSelect=sentMeas$features[7])
-plot(sent, group="features")
-sent=sentometrics::select_measures(sentMeas, toSelect="drug")
-plot(sent, group="features")
 
 #clusters determined by inspection of individual graphs
 ctrMerge=sentometrics::ctr_merge(sentMeas,features=list(oth_press=c("other", "press"),
@@ -326,7 +319,7 @@ plot(ctrMerged, group="features")
 
 # cluster the sentiment measures into two groups
 sent1=sentometrics::select_measures(ctrMerged, 
-                                    toSelect=c("lexicons_LM.LM_eng","myLexicon","oth_press")
+                                    toSelect=c("LM","myLexicon","oth_press")
                                     )
 #inspect the first cluster
 sent1$measures
@@ -335,7 +328,7 @@ sent1$stats
 
 # cluster about drugs and health/pharma specific terms
 sent2=sentometrics::select_measures(ctrMerged, 
-                                    toSelect=c("lexicons_LM.LM_eng","myLexicon","drug_pharma")
+                                    toSelect=c("LM","myLexicon","drug_pharma")
 )
 
 #inspect the second cluster
@@ -345,7 +338,7 @@ sent2$stats
 
 # cluster about stocks and shares
 sent3=sentometrics::select_measures(ctrMerged, 
-                                    toSelect=c("lexicons_LM.HENRY_eng","myLexicon","stock_news")
+                                    toSelect=c("HENRY","myLexicon","stock_news")
 )
 
 #inspect the second cluster
@@ -355,7 +348,7 @@ sent3$stats
 
 # cluster about products and results
 sent4=sentometrics::select_measures(ctrMerged, 
-                                    toSelect=c("lexicons_LM.LM_eng","myLexicon","prod_results")
+                                    toSelect=c("LM","myLexicon","prod_results")
 )
 
 #inspect the second cluster
