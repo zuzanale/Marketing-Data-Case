@@ -10,11 +10,12 @@ library(quanteda)
 library(textstem) #package for lemmatization (overal better than stemming)
 library(tidyverse) #usually used for sentometrics analysis 
 library(tidytext) 
+library(gridExtra) #for multiple plots in one figure
 
-features <- colnames(corpusFirm)[-1:-2] #throw away ids and dates
+features=colnames(corpusFirm)[-1:-2] #throw away ids and dates
 
 # plug the full corpus into the sento_corpus() constructor
-corpus <- sentometrics::sento_corpus(corpusFirm)
+corpus=sentometrics::sento_corpus(corpusFirm)
 str(corpus)
 corpus$documents$texts[1]
 
@@ -46,7 +47,7 @@ textplot_wordcloud(gilead.dfm, min.freq = 10, random.order = FALSE,
 # keywords occurrence search (all the texts
 # are formatted into lowercase, so make sure
 # the keywords are as well)
-corpus <- sentometrics::add_features(corpus, 
+corpus=sentometrics::add_features(corpus, 
             keywords=list(pharma=c("patient", "compound", "bioscience",
                                    "genotyp","method","trademark","formula",
                                    "application","requirement"),
@@ -75,6 +76,15 @@ date= as.Date(c("2015-05-01","2015-11-01","2016-03-01","2016-04-01",
                 "2017-08-01"
                 )))
 
+#reformat for month-year matching events to texts in corpus
+corpus$documents$dateMonth=format(as.Date(corpus$documents$date),"%Y-%m")
+timeline$dateMonth=format(as.Date(timeline$date),"%Y-%m")
+
+#see articles for timeline$event[6] (Vemlidy.approval)
+event=timeline$dateMonth[6]
+#see texts published same month as event occure
+corpus$documents$texts[(corpus$documents$dateMonth %in% event)]
+
 #pick texts with correspoding events on timeline
 
 data("lexicons")
@@ -93,9 +103,10 @@ a=a[!is.na(a)] #remove texts that havent match the pattern
 a=unlist(base::strsplit(a, '"[:blank:]"')) #split into phrases
 
 #reply
-myLexicon=data.frame(w=c(a,c("approve","release","below average","loss of"
+myLexicon=data.frame(w=c(a,c("approve","release","below average","loss of",
+                             "develop new drug", "late stage study"
                         )),
-                        s=c(rep(-1.5,length(a)), 2, 1,-1,-2))
+                        s=c(rep(-1.5,length(a)), 2, 1,-1,-2,2,1.5))
 
 #remove "chronic" from lexicons since in pharma/bioscience topics it is 
 #not negative word, ???needs to be modified
@@ -104,10 +115,11 @@ LM_mod= lexicons$LM_eng[!(lexicons$LM_eng$x %in% toDelete)]
 GI_mod= lexicons$GI_eng[!(lexicons$GI_eng$x %in% toDelete)]
 HENRY_mod= lexicons$HENRY_eng[!(lexicons$HENRY_eng$x %in% toDelete)]
 
-lex = setup_lexicons(list(LM=LM_mod,
-                          GI=GI_mod,
-                          HENRY=HENRY_mod))
-lexiconsIn=c(list(myLexicon=myLexicon),lex)
+lex_LM = setup_lexicons(list(LM=LM_mod))
+lex_GI = setup_lexicons(list(GI=GI_mod))
+lex_HENRY = setup_lexicons(list(HENRY=HENRY_mod))
+                         
+lexiconsIn=c(list(myLexicon=myLexicon),lex_LM,lex_GI ,lex_HENRY )
 lexIn=sentometrics::setup_lexicons(lexiconsIn=lexiconsIn, 
                                       valenceIn=valence[["valence_eng"]], 
                                       do.split=FALSE)
@@ -132,10 +144,11 @@ plot(sentMeas, group="features")+
 plot(sentMeas, group="lexicons")
 
 #for loop doesnt work for some reason????
-par(mfrow=c(2,2))
+#par(mfrow=c(2,2))
 for(i in 1:length(sentMeas$features)){
 sent=sentometrics::select_measures(sentMeas, toSelect=sentMeas$features[i])
-plot(sent, group="features") 
+#plot(sent, group="features") 
+grid.arrange(plot(sent, group="features"), ncol=2)
 }
 
 sent=sentometrics::select_measures(sentMeas, toSelect=sentMeas$features[1])
