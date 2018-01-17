@@ -2,7 +2,7 @@ rm(list=ls(all=TRUE))
 library("sentometrics")
 
 # modify this to where you saved the test corpus
-setwd("/Users/macbookpro/Marketing-Data-Case")
+setwd("C:/Users/Vedder/Documents/Marketing-Data-Case")
 
 load("CORPUS_GILEAD.rda")
 str(corpusFirm) #get structure and data types of the data object
@@ -73,7 +73,7 @@ myOwnLexicon=data.frame(w=c("success", "growth", "efficacy", "forwardlooking","r
 # in prefedined lexicons
 #tokens(corpus$documents$texts, remove_numbers = TRUE,  remove_punct = TRUE)
 gilead.dfm=dfm(corpus, remove = stoplist, stem = F, remove_punct = TRUE)
-View(gilead.dfm)                        
+#View(gilead.dfm)                        
 
 top30=topfeatures(gilead.dfm, 30)  # 30 top words
 top30=data.frame(word=names(top30),count=top30)
@@ -90,10 +90,13 @@ lexIn=sentometrics::setup_lexicons(lexiconsIn=lexiconsIn,
 # sentiment into time series to take place
 ctr <- sentometrics::ctr_agg(howWithin="tf-idf",
                              howDocs="equal_weight",
-                             howTime=c("equal_weight", "linear"),
+                             howTime=c("equal_weight", "linear","almon"),
                              by="day",
                              lag=180,
+                             ordersAlm = TRUE,
                              do.ignoreZeros=TRUE,
+                             do.inverseAlm = TRUE,
+                             do.normalizeAlm = TRUE,
                              fill="latest")
 
 # compute all sentiment measures and plot for inspection
