@@ -299,7 +299,6 @@ ctr=sentometrics::ctr_agg(howWithin="tf-idf",
 sentMeas=my_sento_measures(corpus, lexicons=lexIn,remove=stoplist,ctr=ctr)
 #sentMeas=sentometrics::sento_measures(corpus, lexicons=lexIn,ctr=ctr)
 plot(sentMeas, group="features")+
-  ggthemes::theme_base() +
   scale_y_continuous(limits = c(-0.03,0.07))+
   scale_x_date(date_breaks ="25 months")
 
@@ -378,11 +377,14 @@ globC1=sentometrics::to_global(sent1)
 globC2=sentometrics::to_global(sent2)
 globC3=sentometrics::to_global(sent3)
 globC4=sentometrics::to_global(sent4)
-plot(x=as.Date(row.names(globC1)), y=globC1$global, type="l", xlab="DATE", ylab="SENTIMENT", ylim=c(-0.01, 0.03))
+plot(x=as.Date(row.names(globC1)), main="Global Sentiment Measure"
+     y=globC1$global, type="l", xlab="DATE", ylab="SENTIMENT", ylim=c(-0.01, 0.03))
 lines(x=as.Date(row.names(globC1)), y=globC2$global, col="red")
 lines(x=as.Date(row.names(globC1)), y=globC3$global, col="blue")
 lines(x=as.Date(row.names(globC1)), y=globC4$global, col="green")
-
+legend(2000,9.5, # places a legend at the appropriate place 
+       c("press & other","stock & news","producs & results","drugs & pharma"),
+       lty=c(1,1,1,1)) # puts text in the legend
 # make a relative (spread) index,
 spread1=globC1 - globC2
 spread2=globC3 - globC4
