@@ -136,7 +136,7 @@ topDates <- dates[indx]
 y <- rep(0, length(dates)) # no "event"
 names(y) <- dates
 y[as.Date(names(y)) %in% topDates] <- 1 # "event"
-yb <- as.factor(y) # your base class in logistic regression is the last one appearing in levels(yb)
+y.returns <- as.factor(y) # target var as abnormal change in returns
 
 #get dates from our timeline as importnant reputation events
 events <- timeline$event
@@ -144,7 +144,7 @@ events.date <-timeline$date
 y <- rep(0, length(sentMeasIn$measures$date)) # no "event"
 names(y) <-sentMeasIn$measures$date
 y[as.Date(names(y)) %in% events.date] <- 1 # "event"
-yb <- as.factor(y) # 
+y.timeline <- as.factor(y) # target var as self-defined returns
 
 #########################################################################
 # Reputation modelling
