@@ -62,7 +62,7 @@ data("valence")
 load("CORPUS_GILEAD.rda")
 
 #load sentimets computation in sentiment_analysis.R
-load('Environment.RData')
+load('sentiments.RData')
 #corpus <- sentometrics::sento_corpus(corpusFirm)
 corpus <- add_features(corpus, keywords = list(reputation = c("reputation", "brand")))
 #lexiconsIn <- lexicons[c("LM_eng", "GI_eng", "HENRY_eng")]
