@@ -29,6 +29,7 @@ features=colnames(corpusFirm)[-1:-2] #throw away ids and dates
 corpus=sentometrics::sento_corpus(corpusFirm)
 str(corpus)
 corpus$documents$texts[1]
+texts(corpus) = stri_trans_tolower(texts(corpus))
 
 ###explore features from corpus
 #construct document-frequency matrix, similar as DocumentTermMatrix
@@ -41,8 +42,20 @@ stoplist[(length(stoplist)+1):(length(stoplist)+4)]=c("www","https","http","http
 #this is also done in compute_sentiment() part
 corpus$documents$texts=str_replace_all(corpus$documents$texts, "(^')|('s$)|[^[:alpha:]+[:blank:]]"," ")
 
-#using lemmatization instead of stemming (better results???), 
-corpus$documents$texts=textstem::lemmatize_strings(corpus$documents$texts)
+#using lemmatization instead of stemming 
+# ... or lemmatization
+corpusLem = copy(corpus)
+texts(corpusLem) = sapply(texts(corpus), 
+                          function(i) return(textstem::lemmatize_strings(i))) 
+corpusLem = add_features(corpusLem, keywords=list(increase="increase", detect="detect"))
+# transfer features to original corpus (from a stemmed or lemmatized corpus)
+newFeats = corpusLem$documents[c("increase", "detect")]
+corpus= add_features(corpus, featuresdf=newFeats)
+
+#corpus$documents$texts=textstem::lemmatize_strings(corpus$documents$texts)
+
+
+#most freqent 50 words
 gilead.dfm=dfm(corpus, remove = stoplist, stem = F, remove_punct =T)
 #View(gilead.dfm)                        
 topfeatures(gilead.dfm, 50)  # 50 top words
