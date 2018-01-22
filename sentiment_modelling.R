@@ -198,7 +198,7 @@ plot_attributions_cv_glmnet(attr2)
 #                      features = list(FEAT = sentMeasIn$features),
 #                      time = list(TIME = sentMeasIn$time))
 
-ctrMerge=sentometrics::ctr_merge(sentMeas,features=list(oth_press=c("other", "press"),
+ctrMerge=sentometrics::ctr_merge(sentMeasIn,features=list(oth_press=c("other", "press"),
                                                         stock_news=c("stocks", "news"),
                                                         prod_results=c("products", "results"),
                                                         drug_pharma=c("drug","pharma")),
@@ -209,15 +209,16 @@ sentMerged=merge_measures(ctrMerge)
 plot(sentMerged)
 
 #global indexes from sentiment_analysis.R
-globC1
-globC2
-globC3
-globC4
+glob1=globC1[as.Date(rownames(globC1)) %in% events.date,]
+glob2=globC2[as.Date(rownames(globC2)) %in% events.date,]
+glob3=globC3[as.Date(rownames(globC3)) %in% events.date,]
+glob4=globC4[as.Date(rownames(globC4)) %in% events.date,]
 
 glob=to_global(sentMeasIn)
 
-data=data.frame(yb=yb, glob=glob$global, gi=sentMerged$measures$`GI_eng--FEAT--TIME`, 
-                   he=sentMerged$measures$`HENRY_eng--FEAT--TIME`, lm=sentMerged$measures$`LM_eng--FEAT--TIME`)
+data=data.frame(yb=yb, glob=glob$global, he=sentMerged$measures$`HENRY--stock_news--TIME`, 
+                   lm=sentMerged$measures$`LM--stock_news--TIME`,gi=sentMerged$measures$'GI--stock_news--TIME',
+                my.lex=sentMerged$measures$`myLexicon--stock_news--TIME`)
 
 out3 <- glm(yb ~ gi + he + lm, family=binomial(link="logit"), data=data) # 3 regressors
 summary(out3)
@@ -226,7 +227,7 @@ lines(as.numeric(as.character(yb)), type="p", col="red") # does it change when r
 # par(xpd=FALSE)
 abline(h=0.5)
   
-out4 <- glm(yb ~ glob, family=binomial(link="logit"), data=data) # 1 regressor
+out4 <- glm(yb ~ glob1+glob2+glob3+glob4, family=binomial(link="logit"), data=data) # 1 regressor
 summary(out4)
 plot(out4$fitted.values, ylim=c(0, 1))
 lines(as.numeric(as.character(yb)), type="p", col="red") # does it change when reputation ("stock market") event?

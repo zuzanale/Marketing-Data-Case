@@ -57,7 +57,7 @@ corpus= add_features(corpus, featuresdf=newFeats)
 
 #subset the corpus - take only relevant texts
 # in this case I am taking only texts after 2006
-corpus.event = quanteda::corpus_subset(corpus,format(as.Date(date),"%Y-%m") >  as.Date("2006-01-01"))
+corpus = quanteda::corpus_subset(corpus,format(as.Date(date),"%Y-%m") >as.Date("2006-01-01"))
 
 #most freqent 50 words
 gilead.dfm=dfm(corpus, remove = stoplist, stem = F, remove_punct =T)
