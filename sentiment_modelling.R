@@ -98,9 +98,12 @@ ctr <- sentometrics::ctr_agg(howWithin="tf-idf",
 sentMeas=my_sento_measures(corpus, lexicons=lexIn,remove=stoplist,ctr=ctr)
 plot(sentMeas, group="features")
 
-####################################################################################################### modelling
+#########################################################################
+# Target variable definition
+########################################################################
 
 library("quantmod")
+#to get highest changes in returns as target variables
 getSymbols("GILD", src="google") # Chipotle Mexican Grill's stock prices
 # modify dates to yyyy-mm-01 format in the sentiment measures
 monthsAll <- unlist(lapply(stringi::stri_split(index(GILD), regex = "-"), function(d) return(paste0(d[1:2], collapse = "-"))))
@@ -108,7 +111,8 @@ index(GILD) <- as.Date(paste0(monthsAll, "-01"), format = "%Y-%m-%d")
 volume <- as.data.table(GILD)[, list(volM = sum(GILD.Volume)), by = list(index)]
 target <- volume
 # align sentiment and target variable
-sentMeasIn <- select_measures(sentMeas, dates=index(GILD))
+sentMeasIn <- select_measures(sentMeas, dates=index(GILD))# here we should define which sentiments should be used
+
 dates <- sentMeasIn$measures$date
 target <- target[index %in% as.Date(dates)] # to align target and sentiment variables
 dim(target)[1] == dim(sentMeasIn$measures)[1] # TRUE
@@ -134,11 +138,22 @@ names(y) <- dates
 y[as.Date(names(y)) %in% topDates] <- 1 # "event"
 yb <- as.factor(y) # your base class in logistic regression is the last one appearing in levels(yb)
 
+#get dates from our timeline as importnant reputation events
+events <- timeline$event
+events.date <-timeline$date
+y <- rep(0, length(sentMeasIn$measures$date)) # no "event"
+names(y) <-sentMeasIn$measures$date
+y[as.Date(names(y)) %in% events.date] <- 1 # "event"
+yb <- as.factor(y) # 
+
+#########################################################################
+# Reputation modelling
+########################################################################
 library("doParallel")
 cl <- makeCluster(2)
 registerDoParallel(cl,cores=2)
 #cv stands for cross-validation with caret package
-ctrModel <- ctr_model(model="binomial", type="cv", h=0, alphas=1, trainWindow=60, 
+ctrModel <- ctr_model(model="binomial", type="cv", h=0, trainWindow=50, 
                       testWindow=10, do.parallel=TRUE) # LASSO
 out <- sento_model(sentMeasIn, y=yb, ctr=ctrModel)
 stopCluster(cl)
