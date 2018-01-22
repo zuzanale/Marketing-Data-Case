@@ -139,12 +139,18 @@ y[as.Date(names(y)) %in% topDates] <- 1 # "event"
 y.returns <- as.factor(y) # target var as abnormal change in returns
 
 #get dates from our timeline as importnant reputation events
+sentMeasIn <- select_measures(sentMeas, dates=timeline$date)# here we should define which sentiments should be used
 events <- timeline$event
 events.date <-timeline$date
 y <- rep(0, length(sentMeasIn$measures$date)) # no "event"
 names(y) <-sentMeasIn$measures$date
 y[as.Date(names(y)) %in% events.date] <- 1 # "event"
 y.timeline <- as.factor(y) # target var as self-defined returns
+
+# choose which of those two measure to use,
+#later i can do self-defined function for this
+yb=y.returns 
+#yb=y.timeline
 
 #########################################################################
 # Reputation modelling
@@ -184,13 +190,33 @@ pred2l <- predict(out2, newx=as.matrix(sentMeasIn$measures[, -1]), type="link", 
 (pred2l - coef(out2, s="lambda.min")[1, ]) - rowSums(attr2[, -1]) # very close to zero
 plot_attributions_cv_glmnet(attr2)
 
-ctrMerge <- ctr_merge(sentMeasIn, 
-                      features = list(FEAT = sentMeasIn$features),
-                      time = list(TIME = sentMeasIn$time))
-sentMerged <- merge_measures(ctrMerge)
+##############################################
+#merged sentimets
+##############################################
+#example code
+#ctrMerge <- ctr_merge(sentMeasIn, 
+#                      features = list(FEAT = sentMeasIn$features),
+#                      time = list(TIME = sentMeasIn$time))
+
+ctrMerge=sentometrics::ctr_merge(sentMeas,features=list(oth_press=c("other", "press"),
+                                                        stock_news=c("stocks", "news"),
+                                                        prod_results=c("products", "results"),
+                                                        drug_pharma=c("drug","pharma")),
+                                 time=list(TIME = sentMeasIn$time))
+
+
+sentMerged=merge_measures(ctrMerge)
 plot(sentMerged)
-glob <- to_global(sentMeasIn)
-data <- data.frame(yb=yb, glob=glob$global, gi=sentMerged$measures$`GI_eng--FEAT--TIME`, 
+
+#global indexes from sentiment_analysis.R
+globC1
+globC2
+globC3
+globC4
+
+glob=to_global(sentMeasIn)
+
+data=data.frame(yb=yb, glob=glob$global, gi=sentMerged$measures$`GI_eng--FEAT--TIME`, 
                    he=sentMerged$measures$`HENRY_eng--FEAT--TIME`, lm=sentMerged$measures$`LM_eng--FEAT--TIME`)
 
 out3 <- glm(yb ~ gi + he + lm, family=binomial(link="logit"), data=data) # 3 regressors

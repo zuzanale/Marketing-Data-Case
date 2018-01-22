@@ -55,6 +55,9 @@ corpus= add_features(corpus, featuresdf=newFeats)
 
 #corpus$documents$texts=textstem::lemmatize_strings(corpus$documents$texts)
 
+#subset the corpus - take only relevant texts
+# in this case I am taking only texts after 2006
+corpus.event = quanteda::corpus_subset(corpus,format(as.Date(date),"%Y-%m") >  as.Date("2006-01-01"))
 
 #most freqent 50 words
 gilead.dfm=dfm(corpus, remove = stoplist, stem = F, remove_punct =T)
@@ -457,3 +460,4 @@ plot(x=as.Date(row.names(spread6)),
      main="Stocks & News vs. Drug & Pharma",y=spread6$spread, type="l", xlab="DATE", ylab="SENTIMENT")
 abline(h=0, col="blue")
 
+save.image(file='sentiments.RData')
