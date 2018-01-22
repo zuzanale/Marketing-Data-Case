@@ -10,6 +10,7 @@ head(unique(corpusFirm$date))
 
 #load needed libraries
 library(sentometrics) # needs to be a data frame to work!!!
+library(stringi)
 library(stringr) # forregex adjustments
 library(stopwords) #SnowbalC stopwords
 library(quanteda)
@@ -102,8 +103,25 @@ date= as.Date(c("2015-05-01","2015-11-01","2016-03-01","2016-04-01",
                 "2017-08-01","2014-07-11","2013-12-06","2014-12-06",
                 "2016-12-14")
                 ))
+###########################################
+#finding words to detect reputation event
+##########################################
+eventDates=timeline$date
+corpusEvents = corpus_subset(corpus, date %in% eventDates)
+tokenized = tokens(corpusEvents, what="word", 
+                   remove_numbers=TRUE, remove_punct=TRUE, remove_symbols=TRUE, remove_separators=TRUE)
+tokenized = tokens_remove(tokenized, stopwords("english"))
+dfmTokens = dfm(tokenized)
+head(dfmTokens)
 
-#function for texts selection
+# words that appear most often in the "event" documents
+topFeats = topfeatures(dfmTokens, n=100, scheme="count")
+
+# how many times a word appears at least once in an "event" document
+topFeatsDocs = sort(docfreq(dfmTokens, scheme="count"), decreasing=TRUE)
+
+
+#function for texts selection, for a particular month
 check_events=function(event.id,timeline,corpus){
   #the function to find documents publish the same month as specific
   # events define in timeline df happened
