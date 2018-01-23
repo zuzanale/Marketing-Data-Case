@@ -94,17 +94,8 @@ data("valence")
 
 ###Create my own lexicon
 #define events matrix
-timeline=data.frame(event=c("Copenhagen.acquisition","Genvoya.approval",
-                   " Odefsey.approval",
-                   "Descovy.approval","Epclusa.approval",
-                   "Vemlidy.approval","Vosevi.approval",
-                   "Yescarta.approval","SantaMonica.acquisition","Sovaldi.highprice",
-                   "Sovaldi.approval","lawsuit.highprice","express.deal"),
-date= as.Date(c("2015-05-01","2015-11-01","2016-03-01","2016-04-01",
-                "2016-06-01",
-                "2016-11-01","2017-07-01","2017-10-01",
-                "2017-08-01","2014-07-11","2013-12-06","2014-12-06",
-                "2016-12-14")
+timeline=data.frame(event=c("Sold.Assets","Expansion","New.Med","Lawsuit.Marketing","Donation","Sovaldi","Investigation","Harvoni","Lawsuit.Price","New.CEO","Lawsuit.Patent","Raylo","Corus","Myogen","CV","CGI","Arresto","Calistoga","Pharmasset","YM","Phenex","Epi","Nimbus"),
+date= as.Date(c("2002-03-29","2004-04-27","2006-06-09","2008-08-11","2011-12-08","2013-12-06","2014-07-11","2014-10-10","2014-12-06","2016-01-29","2016-12-16","2006-06-06","2006-08-11","2006-10-02","2009-04-15","2010-06-25","2011-01-03","2011-02-22","2011-11-21","2013-02-08","2015-01-06","2015-05-06","2016-11-02")
                 ))
 ###########################################
 #finding words to detect reputation event
