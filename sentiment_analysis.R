@@ -293,7 +293,7 @@ myLexicon=data.frame(w=c(c(a,b,c,d,e,f),c("approve","release","below average","l
 
 #remove "chronic" from lexicons since in pharma/bioscience topics it is 
 #not negative word
-toDelete = c("chromic","disease")
+toDelete = c("chromic","disease","negative","positive")
 LM_mod= lexicons$LM_eng[!(lexicons$LM_eng$x %in% toDelete)]
 GI_mod= lexicons$GI_eng[!(lexicons$GI_eng$x %in% toDelete)]
 HENRY_mod= lexicons$HENRY_eng[!(lexicons$HENRY_eng$x %in% toDelete)]
