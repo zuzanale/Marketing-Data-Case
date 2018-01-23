@@ -26,6 +26,13 @@ source('~/Marketing-Data-Case/My_compute_sentiment.R')
 
 features=colnames(corpusFirm)[-1:-2] #throw away ids and dates
 
+#erase documents that are not relevant for reputation sentiments 
+# calculation
+corpusFirm=corpusFirm[-grep("p.m.", corpusFirm$text),]
+corpusFirm=corpusFirm[-grep("munich", corpusFirm$text),]
+corpusFirm=corpusFirm[-grep("rns number", corpusFirm$text),]
+corpusFirm=corpusFirm[-grep("institutional holding", corpusFirm$text),]
+
 # plug the full corpus into the sento_corpus() constructor
 corpus=sentometrics::sento_corpus(corpusFirm)
 str(corpus)
