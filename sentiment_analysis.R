@@ -57,8 +57,7 @@ corpus= add_features(corpus, featuresdf=newFeats)
 
 #subset the corpus - take only relevant texts
 # in this case I am taking only texts after 2006
-corpus = quanteda::corpus_subset(corpus,format(as.Date(date),"%Y-%m") >as.Date("2006-01-01"))
-
+corpus=quanteda::corpus_subset(corpus,date>"2006-01-01")
 #most freqent 50 words
 gilead.dfm=dfm(corpus, remove = stoplist, stem = F, remove_punct =T)
 #View(gilead.dfm)                        
@@ -237,7 +236,7 @@ print(sentMeas.event$sentiment) #LM and HENRY negative, GI positive
 list(timeline$event[4]=timeline$event[4],terms=c("raise the risk","rather than ...development"
                                                  ))
 #check if those words are in our lexicons
-tocheck = c("must","risk","sink")
+tocheck = c("must","risk","sink","stimulate")
 (tocheck %in% lexicons$LM_eng$x)
 (tocheck %in% lexicons$GI_eng$x) # only the second one is there
 (tocheck %in% lexicons$HENRY_eng$x)
@@ -452,3 +451,4 @@ plot(x=as.Date(row.names(spread6)),
 abline(h=0, col="blue")
 
 save.image(file='sentiments.RData')
+
