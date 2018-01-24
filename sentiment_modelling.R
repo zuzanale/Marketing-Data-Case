@@ -54,6 +54,7 @@ plot_attributions_cv_glmnet <- function(attributions) { # attribution plotting f
 ####################################################################################################### corpus & sentiment
 
 library("sentometrics")
+library(dplyr)
 data("lexicons")
 data("valence")
 
@@ -62,7 +63,7 @@ data("valence")
 #load("CORPUS_GILEAD.rda")
 
 #load sentimets computation in sentiment_analysis.R
-load('sentiments.RData')
+load('sentiments2.RData')
 #corpus <- sentometrics::sento_corpus(corpusFirm)
 #corpus=add_features(corpus, keywords = list(reputation = c("reputation")))
 #corpus=quanteda::corpus_subset(corpus,date>"2006-01-01")
@@ -257,6 +258,14 @@ data=sentMerged$measures[,-1]
 data=cbind(data.frame(yb=yb, glob1=globC1$global,glob2=globC2$global,
                 glob3=globC3$global,glob4=globC4$global,data
                 ))
+#split into development and validation sample
+data.dev=data[sentMerged$measures$date<='2011-07-01',]
+data.val=data[sentMerged$measures$date>'2011-07-01',]
+
+table(data$yb)/nrow(data) #full sample
+table(data.dev$yb)/nrow(data.dev) #train sample
+table(data.val$yb)/nrow(data.val) #test sample
+
 #try with only data that are connected with stock/returns feature (cluster 3)
 #dataclust3=sent3$measures[,-1]
 dataclust3=sent3$measures %>% dplyr::select(starts_with("HENRY"))
@@ -279,7 +288,11 @@ dataclust=dataclust$measures[,-1]
 dataclust=cbind(data.frame(yb=yb, glob1=globC1$global,glob2=globC2$global,
                            glob4=globC4$global,dataclust
 ))
+#split into development and validation sample
+dataclust.dev=dataclust[sentMerged$measures$date<='2011-07-01',]
+dataclust.val=dataclust[sentMerged$measures$date>'2011-07-01',]
 
+#
 ########## LOGISTIC REGRESSSION #####################################################
 ###returns
 #full regression
@@ -319,25 +332,29 @@ bothways2 =step(fullmod, scope=list(lower=formula(nothing),upper= as.formula(yb 
 summary(bothways2) #final model
 
 final_model=glm(formula = yb ~ glob2 + glob3 + glob4 + HENRY..web..equal_weight + 
-                  HENRY..detect..equal_weight + HENRY..web..linear + HENRY..increase..linear + 
-                  HENRY..detect..linear + HENRY..increase..almon1 + HENRY..detect..almon1 + 
-                  HENRY..increase..almon1_inv + HENRY..detect..almon1_inv + 
-                  HENRY..oth_press..equal_weight + HENRY..oth_press..linear + 
-                  HENRY..oth_press..almon1 + HENRY..oth_press..almon1_inv + 
-                  HENRY..stock_news..equal_weight + HENRY..stock_news..linear + 
-                  HENRY..prod_results..equal_weight + HENRY..prod_results..almon1_inv + 
-                  HENRY..drug_pharma..equal_weight + HENRY..drug_pharma..linear + 
-                  HENRY..drug_pharma..almon1_inv, family = binomial(link = "logit"), 
+                  HENRY..drug_pharma..equal_weight +HENRY..drug_pharma..linear+
+                  HENRY..web..linear+HENRY..detect..linear+HENRY..stock_news..equal_weight+
+                  HENRY..oth_press..equal_weight +HENRY..oth_press..linear +glob1+
+                  HENRY..prod_results..equal_weight+HENRY..increase..equal_weight+
+                  HENRY..increase..linear +HENRY..stock_news..linear  +HENRY..prod_results..linear+
+                  HENRY..detect..equal_weight
+                  , family = binomial(link = "logit"), 
                 data = dataclust3)
 
 
-plot(final_model$fitted.values, ylim=c(0, 1))
+plot(final_model$fitted.values, ylim=c(0, 1),main="Reputation based on abnormal returns",
+     ylab="Target variable")
 lines(as.numeric(as.character(yb)), type="p", col="red") # does it change when reputation ("stock market") event?
-# par(xpd=FALSE)
 abline(h=0.5)
-  
-final_model_v1=glm(formula = yb ~ glob1 + glob3 +glob4 + HENRY..web..equal_weight + 
-                     HENRY..increase..equal_weight + HENRY..detect..equal_weight + 
+legend(90,0.9, # places a legend at the appropriate place 
+       c("fitted values","real values"),
+       lty=c(0,0),
+       lwd=c(1,1),col=c("black","red"),
+       pch=c(1,1)) # puts text in the legend
+
+# this is the best model for abnormal returns modelling with a use of cluster with financial features  
+final_model_v1=glm(formula = yb ~ glob1 + glob3 + HENRY..web..equal_weight + 
+                       HENRY..detect..equal_weight + 
                      HENRY..web..linear + HENRY..increase..linear + HENRY..detect..linear + 
                      HENRY..oth_press..equal_weight + HENRY..oth_press..linear + 
                      HENRY..stock_news..equal_weight + HENRY..stock_news..linear + 
@@ -350,9 +367,15 @@ final_model_v1=glm(formula = yb ~ glob1 + glob3 +glob4 + HENRY..web..equal_weigh
                    family = binomial(link = "logit"), data = dataclust3)
 
 summary(final_model_v1)
-plot(final_model_v1$fitted.values, ylim=c(0, 1))
+plot(final_model_v1$fitted.values, ylim=c(0, 1),main="Reputation based on abnormal returns",
+     ylab="Target variable")
 lines(as.numeric(as.character(yb)), type="p", col="red") # does it change when reputation ("stock market") event?
 abline(h=0.5)
+legend(90,0.9, # places a legend at the appropriate place 
+       c("fitted values","real values"),
+       lty=c(0,0),
+       lwd=c(1,1),col=c("black","red"),
+       pch=c(1,1)) # puts text in the legend
 
 ###regression diagnostic and evaluation
 anova(final_model, test="Chisq")
@@ -377,6 +400,9 @@ varImp(final_model_v1)
 pred.link=predict(final_model,dataclust3.val, type="link")
 pred.response=predict(final_model,dataclust3.val,type='response')
 
+pred.link2=predict(final_model_v1,dataclust3.val, type="link")
+pred.response2=predict(final_model_v1,dataclust3.val,type='response')
+
 score_data=data.frame(link=pred.link, 
                          response=pred.response,
                          y=dataclust3.val$yb,
@@ -389,43 +415,93 @@ score_data %>%
   geom_rug() + 
   ggtitle("Both link and response scores put cases in the same order")
 
+score_data2=data.frame(link=pred.link2, 
+                      response=pred.response2,
+                      y=dataclust3.val$yb,
+                      stringsAsFactors=FALSE)
+
+score_data2 %>% 
+  ggplot(aes(x=link, y=response, col=y)) + 
+  scale_color_manual(values=c("black", "red")) + 
+  geom_point() + 
+  geom_rug() + 
+  ggtitle("Both link and response scores put cases in the same order")
+
 #Accuracy computation
 pred.response=ifelse(pred.response > 0.5,1,0)
 misClasificError=mean(pred.response != dataclust3.val$yb)
 print(paste('Accuracy',1-misClasificError)) #print prediction accuracy
 
+pred.response2=ifelse(pred.response2 > 0.5,1,0)
+misClasificError=mean(pred.response2 != dataclust3.val$yb)
+print(paste('Accuracy',1-misClasificError)) #print prediction accuracy
+
 #plotting ROC curve, plotting TPR against FPR
 library(pROC)
-plot(roc(dataclust3.val$yb,pred.response, direction="<"),
+plot(roc(dataclust3.val$yb,pred.response2, direction="<"),
      col="blue", lwd=3, main="ROC curve for extraordinary
      return change prediction")
 
 #AUC computation
 library(ROCR)
-pr=prediction(pred.response,dataclust3.val$yb)
+pr=prediction(pred.response2,dataclust3.val$yb)
 auc=performance(pr, measure = "auc")
 auc=auc@y.values[[1]]
-auc
+auc #auc on validation sample for stock-returns cluster is 0.7833333
 
-plotBinary(pred.response, yb)
-plotBinary(pred.response[yb == 1], yb[yb == 1])
-TP=sum(pred.response[pred.response == 1] == yb[pred.response == 1]) # true positives
-TN=sum(pred.response[pred.response == 0] == yb[pred.response == 0]) # true negatives
-FP =sum(pred.response[pred.response == 1] != yb[pred.response == 1]) # false positives
-FN =sum(pred.response[pred.response == 0] != yb[pred.response == 0]) # false negatives
+############################################################
+###### Evaluations for validation sample #################
+########################################################
+
+#plotBinary(pred.response[yb == 1], yb[yb == 1])
+TP=sum(pred.response[pred.response == 1] ==  dataclust3.val$yb[pred.response == 1]) # true positives
+TN=sum(pred.response[pred.response == 0] ==  dataclust3.val$yb[pred.response == 0]) # true negatives
+FP =sum(pred.response[pred.response == 1] !=  dataclust3.val$yb[pred.response == 1]) # false positives
+FN =sum(pred.response[pred.response == 0] !=  dataclust3.val$yb[pred.response == 0]) # false negatives
+TPR = TP / (TP + FN)
+TNR =TN / (TN + FP)
+accT= (TP + TN) / (TP + FP + TN + FN) # total accuracy
+
+#same evaluation measures for the second model
+TP=sum(pred.response2[pred.response2 == 1] == dataclust3.val$yb[pred.response2 == 1]) # true positives
+TN=sum(pred.response2[pred.response2 == 0] ==  dataclust3.val$yb[pred.response2 == 0]) # true negatives
+FP =sum(pred.response2[pred.response2 == 1] !=dataclust3.val$yb[pred.response2 == 1]) # false positives
+FN =sum(pred.response2[pred.response2 == 0] != dataclust3.val$yb[pred.response2 == 0]) # false negatives
+TPR = TP / (TP + FN)
+TNR =TN / (TN + FP)
+accT= (TP + TN) / (TP + FP + TN + FN) # total accuracy
+
+
+############################################################
+###### Evaluations for full sample #################
+########################################################
+pred.response=predict(final_model,dataclust3,type='response')
+pred.response=ifelse(pred.response > 0.5,1,0)
+pred.response2=predict(final_model_v1,dataclust3,type='response')
+pred.response2=ifelse(pred.response2 > 0.5,1,0)
+
+TP=sum(pred.response[pred.response == 1] ==  dataclust3$yb[pred.response == 1]) # true positives
+TN=sum(pred.response[pred.response == 0] ==  dataclust3$yb[pred.response == 0]) # true negatives
+FP =sum(pred.response[pred.response == 1] !=  dataclust3$yb[pred.response == 1]) # false positives
+FN =sum(pred.response[pred.response == 0] !=  dataclust3$yb[pred.response == 0]) # false negatives
+TPR = TP / (TP + FN)
+TNR =TN / (TN + FP)
+accT= (TP + TN) / (TP + FP + TN + FN) # total accuracy
+
+#same evaluation measures for the second model
+TP=sum(pred.response2[pred.response2 == 1] == dataclust3$yb[pred.response2 == 1]) # true positives
+TN=sum(pred.response2[pred.response2 == 0] ==  dataclust3$yb[pred.response2 == 0]) # true negatives
+FP =sum(pred.response2[pred.response2 == 1] !=dataclust3$yb[pred.response2 == 1]) # false positives
+FN =sum(pred.response2[pred.response2 == 0] != dataclust3$yb[pred.response2 == 0]) # false negatives
 TPR = TP / (TP + FN)
 TNR =TN / (TN + FP)
 accT= (TP + TN) / (TP + FP + TN + FN) # total accuracy
 
 ################ SPARSE REGRESSION #########################################################
-#plot the results
-attr=retrieve_attributions(sparse, sentMerged)
-plot_attributions(attr) # this is only about the sentiment measures, so no constant or other variables!
-
 library("glmnet")
-sparse2=cv.glmnet(x=as.matrix(dataclust3), y=yb, family="binomial", alpha=1, type.measure="class", nfolds=10)
+sparse2=cv.glmnet(x=as.matrix(sent3$measures[, -1]), y=yb, family="binomial", alpha=1, type.measure="class", nfolds=10)
 plot(sparse2)
-pred2=predict(sparse2, newx=as.matrix(dataclust3), type="class", s="lambda.min")
+pred2=predict(sparse2, newx=as.matrix(sent3$measures[, -1]), type="class", s="lambda.min")
 plotBinary(pred2, yb)
 coef=coef(sparse2, s="lambda.min")
 
@@ -444,3 +520,60 @@ TPR = TP / (TP + FN) #recall
 PR=TP/(TP+TN) #precission
 TNR =TN / (TN + FP) #true negative rate
 accT= (TP + TN) / (TP + FP + TN + FN) # total accuracy
+
+#####################################################################################
+####################### Random forest ########################################
+library(randomForest)
+#returns as target variable
+
+set=data.dev
+set.val=data.val
+set=dataclust3.dev # sentiments only with regard to financial data
+set.val=dataclust3.val
+set=dataclust.dev
+set.val=dataclust.dev
+
+#randomForest
+rf = randomForest(yb ~ .,  
+                  ntree = 100,
+                  data = set)
+plot(rf) 
+print(rf)
+
+# Variable Importance
+varImpPlot(rf,  
+           sort = T,
+           n.var=10,
+           main="Top 10 - Variable Importance")
+var.imp = data.frame(importance(rf,  
+                                type=2))
+# make row names as columns
+var.imp$Variables = row.names(var.imp)  
+print(var.imp[order(var.imp$MeanDecreaseGini,decreasing = T),])
+
+# Predicting response variable
+prediction = predict(rf , set)
+# Create Confusion Matrix
+print(  
+  confusionMatrix(data=prediction,  
+                  reference=set$yb))
+
+# Create Confusion Matrix
+# Predicting response variable
+prediction.val=predict(rf ,set.val)
+
+# Create Confusion Matrix
+print(  
+  confusionMatrix(data=prediction.val,  
+                  reference=set.val$yb))
+
+TP=sum(prediction.val[prediction.val == 1] == set.val[prediction.val == 1,1]) # true positives
+TN=sum(prediction.val[prediction.val == 0] == set.val[prediction.val == 0,1]) # true negatives
+FP =sum(prediction.val[prediction.val == 1] != set.val[prediction.val == 1,1]) # false positives
+FN =sum(prediction.val[prediction.val == 0] != set.val[prediction.val == 0,1]) # false negatives
+TPR = TP / (TP + FN) #recall
+PR=TP/(TP+TN) #precission
+TNR =TN / (TN + FP) #true negative rate
+accT= (TP + TN) / (TP + FP + TN + FN) # total accuracy
+
+save.image(file='model1.RData')
