@@ -71,13 +71,13 @@ load('sentiments.RData')
 
 #these are our old control settings
 #ctr=sentometrics::ctr_agg(howWithin="tf-idf",
-#                          howDocs="proportional",
-#                          howTime=c("equal_weight", "linear","almon"),
-#                          by="day",
-#                          lag=100,
-#                          do.ignoreZeros=TRUE,
-#                          fill="latest",ordersAlm=1:3,
-#                          do.normalizeAlm=TRUE)
+#                         howDocs="proportional",
+#                         howTime=c("equal_weight", "linear","almon"),
+#                         by="day",
+#                         lag=100,
+#                         do.ignoreZeros=TRUE,
+#                         fill="latest",ordersAlm=1:3,
+#                         do.normalizeAlm=TRUE, do.inverseAlm = TRUE)
 
 #split into development set and validation set 
 #pre-crises post crises split approach
@@ -89,7 +89,7 @@ load('sentiments.RData')
 #validate_sample=quanteda::corpus_subset(corpus,date>"2011-11-21")
 
 #setting from example code
-ctr <- sentometrics::ctr_agg(howWithin="tf-idf",
+#ctr <- sentometrics::ctr_agg(howWithin="tf-idf",
                              howDocs="equal_weight",
                              howTime=c("equal_weight", "linear", "exponential"),
                              by="month",
@@ -98,8 +98,8 @@ ctr <- sentometrics::ctr_agg(howWithin="tf-idf",
                              do.ignoreZeros=FALSE,
                              fill="zero")
 
-sentMeas=my_sento_measures(corpus, lexicons=lexIn,remove=stoplist,ctr=ctr)
-plot(sentMeas, group="features")
+#sentMeas=my_sento_measures(corpus, lexicons=lexIn,remove=stoplist,ctr=ctr)
+#plot(sentMeas, group="features")
 
 #########################################################################
 # Target variable definition
@@ -291,11 +291,11 @@ nothing=glm(yb ~ 1, family=binomial(link="logit"),data=data)
 summary(nothing)
 
 ###events
-fullmod=glm(yb ~ ., family=binomial(link="logit"), data=dataclust3.dev) # all the variables
+fullmod=glm(yb ~ ., family=binomial(link="logit"), data=dataclust3) # all the variables
 summary(fullmod)
 
 #nothing
-nothing=glm(yb ~ 1, family=binomial(link="logit"),data=dataclust3.dev)
+nothing=glm(yb ~ 1, family=binomial(link="logit"),data=dataclust3)
 summary(nothing)
 
 ###events
@@ -318,18 +318,37 @@ bothways2 =step(fullmod, scope=list(lower=formula(nothing),upper= as.formula(yb 
                direction="both")
 summary(bothways2) #final model
 
-final_model=glm(formula = yb ~ glob1 + glob4 + HENRY..web..equal_weight + 
-                  HENRY..increase..almon1 + HENRY..oth_press..equal_weight + 
-                  HENRY..stock_news..linear + HENRY..stock_news..almon1, family = binomial(link = "logit"), 
-                data = dataclust3.dev)
+final_model=glm(formula = yb ~ glob2 + glob3 + glob4 + HENRY..web..equal_weight + 
+                  HENRY..detect..equal_weight + HENRY..web..linear + HENRY..increase..linear + 
+                  HENRY..detect..linear + HENRY..increase..almon1 + HENRY..detect..almon1 + 
+                  HENRY..increase..almon1_inv + HENRY..detect..almon1_inv + 
+                  HENRY..oth_press..equal_weight + HENRY..oth_press..linear + 
+                  HENRY..oth_press..almon1 + HENRY..oth_press..almon1_inv + 
+                  HENRY..stock_news..equal_weight + HENRY..stock_news..linear + 
+                  HENRY..prod_results..equal_weight + HENRY..prod_results..almon1_inv + 
+                  HENRY..drug_pharma..equal_weight + HENRY..drug_pharma..linear + 
+                  HENRY..drug_pharma..almon1_inv, family = binomial(link = "logit"), 
+                data = dataclust3)
+
 
 plot(final_model$fitted.values, ylim=c(0, 1))
 lines(as.numeric(as.character(yb)), type="p", col="red") # does it change when reputation ("stock market") event?
 # par(xpd=FALSE)
 abline(h=0.5)
   
-final_model_v1=glm(formula = yb ~ glob1 + glob3 + glob4 + he + gi, family = binomial(link = "logit"), 
-                  data = data)
+final_model_v1=glm(formula = yb ~ glob1 + glob3 +glob4 + HENRY..web..equal_weight + 
+                     HENRY..increase..equal_weight + HENRY..detect..equal_weight + 
+                     HENRY..web..linear + HENRY..increase..linear + HENRY..detect..linear + 
+                     HENRY..oth_press..equal_weight + HENRY..oth_press..linear + 
+                     HENRY..stock_news..equal_weight + HENRY..stock_news..linear + 
+                     HENRY..prod_results..equal_weight + HENRY..prod_results..linear + 
+                     HENRY..drug_pharma..equal_weight  + 
+                     HENRY..stock_news..linear:HENRY..prod_results..equal_weight + 
+                     HENRY..web..equal_weight:HENRY..detect..equal_weight + HENRY..web..equal_weight:HENRY..prod_results..linear + 
+                     HENRY..oth_press..equal_weight:HENRY..prod_results..equal_weight + 
+                     HENRY..web..equal_weight:HENRY..detect..linear + glob1:HENRY..detect..linear, 
+                   family = binomial(link = "logit"), data = dataclust3)
+
 summary(final_model_v1)
 plot(final_model_v1$fitted.values, ylim=c(0, 1))
 lines(as.numeric(as.character(yb)), type="p", col="red") # does it change when reputation ("stock market") event?
@@ -337,6 +356,7 @@ abline(h=0.5)
 
 ###regression diagnostic and evaluation
 anova(final_model, test="Chisq")
+anova(final_model_v1, test="Chisq")
 
 #pseudo R^2
 library(pscl)
@@ -387,7 +407,6 @@ auc=performance(pr, measure = "auc")
 auc=auc@y.values[[1]]
 auc
 
-pred=predict(sparse$reg, newx=as.matrix(sentMerged$measures[, -1]), type="class")
 plotBinary(pred.response, yb)
 plotBinary(pred.response[yb == 1], yb[yb == 1])
 TP=sum(pred.response[pred.response == 1] == yb[pred.response == 1]) # true positives
