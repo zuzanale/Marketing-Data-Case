@@ -170,8 +170,8 @@ dataclust3=cbind(data.frame(yb=yb, glob1=globC1$global,glob2=globC2$global,
 ))
 
 #split into development and validation sample
-dataclust3.dev=dataclust3[sent3$measures$date<='2011-07-01',]
-dataclust3.val=dataclust3[sent3$measures$date>'2011-07-01',]
+dataclust3.dev=dataclust3[sent3$measures$date<='2014-07-11',]
+dataclust3.val=dataclust3[sent3$measures$date>'2014-07-11',]
 
 #
 ########## LOGISTIC REGRESSSION #####################################################
@@ -218,12 +218,12 @@ legend(90,0.9, # places a legend at the appropriate place
        pch=c(1,1)) # puts text in the legend
 
 # this is the best model for abnormal returns modelling with a use of cluster with financial features  
-final_model_v1=glm(formula = yb ~ glob1 + glob3 + HENRY..web..equal_weight + 
+final_model_v1=glm(formula = yb ~ glob1 +  HENRY..web..equal_weight + 
                        HENRY..detect..equal_weight + 
                      HENRY..web..linear + HENRY..increase..linear + HENRY..detect..linear + 
                      HENRY..oth_press..equal_weight + HENRY..oth_press..linear + 
                      HENRY..stock_news..equal_weight + HENRY..stock_news..linear + 
-                     HENRY..prod_results..equal_weight + HENRY..prod_results..linear + 
+                     HENRY..prod_results..equal_weight + 
                      HENRY..drug_pharma..equal_weight  + 
                      HENRY..stock_news..linear:HENRY..prod_results..equal_weight + 
                      HENRY..web..equal_weight:HENRY..detect..equal_weight + HENRY..web..equal_weight:HENRY..prod_results..linear + 
@@ -232,6 +232,8 @@ final_model_v1=glm(formula = yb ~ glob1 + glob3 + HENRY..web..equal_weight +
                    family = binomial(link = "logit"), data = dataclust3)
 
 summary(final_model_v1)
+
+
 plot(final_model_v1$fitted.values, ylim=c(0, 1),main="Reputation based on abnormal returns",
      ylab="Target variable")
 lines(as.numeric(as.character(yb)), type="p", col="red") # does it change when reputation ("stock market") event?
@@ -332,11 +334,16 @@ TP=sum(pred.response2[pred.response2 == 1] == dataclust3.val$yb[pred.response2 =
 TN=sum(pred.response2[pred.response2 == 0] ==  dataclust3.val$yb[pred.response2 == 0]) # true negatives
 FP =sum(pred.response2[pred.response2 == 1] !=dataclust3.val$yb[pred.response2 == 1]) # false positives
 FN =sum(pred.response2[pred.response2 == 0] != dataclust3.val$yb[pred.response2 == 0]) # false negatives
-TPR = TP / (TP + FN)
-TNR =TN / (TN + FP)
+precision= TP / (TP + FP) #precission
+TPR = TP / (TP + FN) #recall
+TNR =TN / (TN + FP) #true negative rate
 accT= (TP + TN) / (TP + FP + TN + FN) # total accuracy
 
-
+test.measures=data.frame(c("pseudo R^2", "AUC","MisclasificError","TP",
+                           "TN","FP","FN","Precision","Recall","TNR","Total Accuracy"),
+                         c(pR2(final_model_v1)[4],auc,misClasificError,
+                           TP,TN,FP,FN,precision,TPR,TNR,accT))
+  
 ############################################################
 ###### Evaluations for full sample #################
 ########################################################
