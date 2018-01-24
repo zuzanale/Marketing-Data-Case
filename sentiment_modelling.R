@@ -127,7 +127,7 @@ target_var=function(sentMeas, measure=c("returns","events"), timeline=NULL
   
     # align sentiment and target variable
     sentMeasIn <- select_measures(sentMeas, dates=index(GILD))# here we should define which sentiments should be used
-    ctrMerged<- select_measures(ctrMerged, dates=index(GILD))
+    sentMerged<- select_measures(ctrMerged, dates=index(GILD))
     sent1 <- select_measures(sent1,dates=index(GILD))
     sent2 <- select_measures(sent2, dates=index(GILD))
     sent3 <- select_measures(sent3, dates=index(GILD))
@@ -207,21 +207,13 @@ sentMeansIn=target[[2]]
 #dev_sample=quanteda::corpus_subset(corpus,date<="2011-07-01")
 #validate_sample=quanteda::corpus_subset(corpus,date>"2011-07-01")
 
-t=c(as.Date("2006-01-01"), as.Date("2011-07-01"))
-dev_sample=sentometrics::select_measures(sentMeasIn,
-                                         date=seq(t[1], t[2]))
-t=c(as.Date("2011-07-01"), as.Date("2016-12-31"))
-val_sample=sentometrics::select_measures(sentMeasIn,
-                                         date<=as.Date("2011-07-01"))
+dev_sample = select_measures(sentMeasIn, dates = "date <='2011-07-01'")
+val_sample = select_measures(sentMeasIn, dates = "date > '2011-07-01'")
+
 
 #important merge as the split point
-dev_sample=quanteda::corpus_subset(corpus,date<="2011-11-21")
-validate_sample=quanteda::corpus_subset(corpus,date>"2011-11-21")
-
-
-dev_sample=sentometrics::select_measures(sentMeasIn, 
-                                    list(date<=as.Date("2011-07-01")))
-                                    
+dev_sample = select_measures(sentMeasIn, dates = "date <='2011-11-21'")
+val_sample = select_measures(sentMeasIn, dates = "date > '2011-11-21'")
 
 #ctrMerge=sentometrics::ctr_merge(sentMeasIn,features=list(oth_press=c("other", "press"),
 #                                                        stock_news=c("stocks", "news"),
@@ -266,7 +258,8 @@ data=cbind(data.frame(yb=yb, glob1=globC1$global,glob2=globC2$global,
                 glob3=globC3$global,glob4=globC4$global,data
                 ))
 #try with only data that are connected with stock/returns feature (cluster 3)
-dataclust3=sent3$measures[,-1]
+#dataclust3=sent3$measures[,-1]
+dataclust3=sent3$measures[,grepl("HENRY" , names(sent3$measures))]
 dataclust3=cbind(data.frame(yb=yb, glob1=globC1$global,glob2=globC2$global,
                       glob3=globC3$global,glob4=globC4$global,dataclust3
 ))
@@ -321,9 +314,14 @@ bothways2 =step(fullmod, scope=list(lower=formula(nothing),upper= as.formula(yb 
                direction="both")
 summary(bothways2) #final model
 
-final_model=glm(formula = yb ~ glob1 + glob2 + glob4 + my.lex + lm + gi + 
-                  my.lex:lm + glob4:lm + glob1:lm + glob2:lm + glob4:my.lex + 
-                  glob2:glob4, family = binomial(link = "logit"), data = data)
+final_model=glm(formula = yb ~ glob1 + glob3 + myLexicon..detect..equal_weight + 
+                  HENRY..web..almon1 + HENRY..detect..almon1 + myLexicon..detect..almon1_inv + 
+                  HENRY..detect..almon1_inv + myLexicon..oth_press..linear + 
+                  HENRY..stock_news..linear + GI..stock_news..almon1 + myLexicon..prod_results..linear + 
+                  myLexicon..prod_results..almon1 + myLexicon..drug_pharma..equal_weight + 
+                  HENRY..drug_pharma..equal_weight + myLexicon..drug_pharma..linear + 
+                  myLexicon..drug_pharma..almon1 + myLexicon..drug_pharma..almon1_inv, 
+                family = binomial(link = "logit"), data = dataclust3)
 
 plot(final_model$fitted.values, ylim=c(0, 1))
 lines(as.numeric(as.character(yb)), type="p", col="red") # does it change when reputation ("stock market") event?
@@ -357,10 +355,12 @@ varImp(final_model_v1)
 ################ SPARSE REGRESSION #########################################################
 ctrModel=ctr_model(model="binomial", type="cv", h=0, trainWindow=60, 
                       testWindow=10, do.parallel=TRUE) # LASSO
-sparse=sento_model(sentMerged, y=yb, ctr=ctrModel)
+sparse=my_sento_model(sentMerged, y=yb, ctr=ctrModel)
 stopCluster(cl)
 summary(sparse)
 pred=predict(sparse$reg, newx=as.matrix(sentMerged$measures[, -1]), type="class")
+
+
 plotBinary(pred, yb)
 plotBinary(pred[yb == 1], yb[yb == 1])
 TP=sum(pred[pred == 1] == yb[pred == 1]) # true positives
@@ -376,14 +376,24 @@ attr=retrieve_attributions(sparse, sentMerged)
 plot_attributions(attr) # this is only about the sentiment measures, so no constant or other variables!
 
 library("glmnet")
-sparse2=cv.glmnet(x=as.matrix(sentMerged$measures[, -1]), y=yb, family="binomial", alpha=1, type.measure="class", nfolds=10)
+sparse2=cv.glmnet(x=as.matrix(sent3$measures[, -1]), y=yb, family="binomial", alpha=1, type.measure="class", nfolds=10)
 plot(sparse2)
-pred2=predict(sparse2, newx=as.matrix(sentMerged$measures[, -1]), type="class", s="lambda.min")
+pred2=predict(sparse2, newx=as.matrix(sent3$measures[, -1]), type="class", s="lambda.min")
 plotBinary(pred2, yb)
 coef=coef(sparse2, s="lambda.min")
 
 #prediction evaluation
-attr2=attribution_cv_glmnet(sparse2, sentMerged, sentMerged$lexicons, "lexicons")
-pred2l=predict(sparse2, newx=as.matrix(sentMerged$measures[, -1]), type="link", s="lambda.min") # linear equation
+attr2=attribution_cv_glmnet(sparse2, sent3, sent3$features, "features")
+pred2l=predict(sparse2, newx=as.matrix(sent3$measures[, -1]), type="link", s="lambda.min") # linear equation
 (pred2l - coef(sparse2, s="lambda.min")[1, ]) - rowSums(attr2[, -1]) # very close to zero
 plot_attributions_cv_glmnet(attr2)
+
+plotBinary(pred2[yb == 1], yb[yb == 1])
+TP=sum(pred2[pred2 == 1] == yb[pred2 == 1]) # true positives
+TN=sum(pred2[pred2 == 0] == yb[pred2 == 0]) # true negatives
+FP =sum(pred2[pred2 == 1] != yb[pred2 == 1]) # false positives
+FN =sum(pred2[pred2 == 0] != yb[pred2 == 0]) # false negatives
+TPR = TP / (TP + FN) #recall
+PR=TP/(TP+TN) #precission
+TNR =TN / (TN + FP) #true negative rate
+accT= (TP + TN) / (TP + FP + TN + FN) # total accuracy
