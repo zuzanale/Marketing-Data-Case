@@ -28,10 +28,11 @@ features=colnames(corpusFirm)[-1:-2] #throw away ids and dates
 
 #erase documents that are not relevant for reputation sentiments 
 # calculation
-corpusFirm=corpusFirm[-grep("p.m.", corpusFirm$text),]
+#corpusFirm=corpusFirm[-grep("p.m.", corpusFirm$text),]
 corpusFirm=corpusFirm[-grep("munich", corpusFirm$text),]
-corpusFirm=corpusFirm[-grep("rns number", corpusFirm$text),]
-corpusFirm=corpusFirm[-grep("institutional holding", corpusFirm$text),]
+#corpusFirm=corpusFirm[-grep("rns number", corpusFirm$text),]
+#corpusFirm=corpusFirm[-grep("institutional holding", corpusFirm$text),]
+#corpusFirm[!(corpusFirm$id %in% c(193,28,29,26,14,15,16,12,11,9,148,144,134,321))]
 
 # plug the full corpus into the sento_corpus() constructor
 corpus=sentometrics::sento_corpus(corpusFirm)
@@ -65,6 +66,7 @@ corpus= add_features(corpus, featuresdf=newFeats)
 #subset the corpus - take only relevant texts
 # in this case I am taking only texts after 2006
 corpus=quanteda::corpus_subset(corpus,date>"2006-01-01")
+corpus=quanteda::corpus_subset(corpus, press != 1). 
 #most freqent 50 words
 gilead.dfm=dfm(corpus, remove = stoplist, stem = F, remove_punct =T)
 #View(gilead.dfm)                        
@@ -299,7 +301,7 @@ myLexicon=data.frame(w=c(c(a,b,c,d,e,f),c("approve","release","below average","l
 
 #remove "chronic" from lexicons since in pharma/bioscience topics it is 
 #not negative word
-toDelete = c("chromic","disease","negative","positive")
+toDelete = c("chromic","disease","negative","positive","stimulate")
 LM_mod= lexicons$LM_eng[!(lexicons$LM_eng$x %in% toDelete)]
 GI_mod= lexicons$GI_eng[!(lexicons$GI_eng$x %in% toDelete)]
 HENRY_mod= lexicons$HENRY_eng[!(lexicons$HENRY_eng$x %in% toDelete)]
@@ -322,6 +324,15 @@ ctr=sentometrics::ctr_agg(howWithin="tf-idf",
                              lag=100,
                              do.ignoreZeros=TRUE,
                              fill="latest",ordersAlm=1:3,
+                          do.normalizeAlm=TRUE)
+
+ctr=sentometrics::ctr_agg(howWithin="tf-idf",
+                          howDocs="proportional",
+                          howTime=c("equal_weight", "linear","almon"),
+                          by="day",
+                          lag=100,
+                          do.ignoreZeros=TRUE,
+                          fill="latest",ordersAlm=1:3,
                           do.normalizeAlm=TRUE)
 
 # compute all sentiment measures and plot for inspection

@@ -59,13 +59,13 @@ data("valence")
 
 # setwd("C:/Users/lezuz/OneDrive/Documents/Marketing-Data-Case")
 
-load("CORPUS_GILEAD.rda")
+#load("CORPUS_GILEAD.rda")
 
 #load sentimets computation in sentiment_analysis.R
 load('sentiments.RData')
 #corpus <- sentometrics::sento_corpus(corpusFirm)
-corpus=add_features(corpus, keywords = list(reputation = c("reputation")))
-corpus=quanteda::corpus_subset(corpus,date>"2006-01-01")
+#corpus=add_features(corpus, keywords = list(reputation = c("reputation")))
+#corpus=quanteda::corpus_subset(corpus,date>"2006-01-01")
 #lexiconsIn <- lexicons[c("LM_eng", "GI_eng", "HENRY_eng")]
 #lexIn <- sentometrics::setup_lexicons(lexiconsIn=lexiconsIn, valenceIn=valence[["valence_eng"]])
 
@@ -79,21 +79,23 @@ corpus=quanteda::corpus_subset(corpus,date>"2006-01-01")
 #                          fill="latest",ordersAlm=1:3,
 #                          do.normalizeAlm=TRUE)
 
+#split into development set and validation set 
+#pre-crises post crises split approach
+#dev_sample=quanteda::corpus_subset(corpus,date<="2011-07-01")
+#validate_sample=quanteda::corpus_subset(corpus,date>"2011-07-01")
+
+#important merge as the split point
+#dev_sample=quanteda::corpus_subset(corpus,date<="2011-11-21")
+#validate_sample=quanteda::corpus_subset(corpus,date>"2011-11-21")
+
 #setting from example code
 ctr <- sentometrics::ctr_agg(howWithin="tf-idf",
-        howDocs="equal_weight",
-        howTime=c("equal_weight", "linear", "exponential"),
-        by="month",
-        lag=12,
-        alphasExp=c(0.2, 0.5),
-        do.ignoreZeros=FALSE,
-        fill="zero")
-ctr <- sentometrics::ctr_agg(howWithin="tf-idf",
                              howDocs="equal_weight",
-                             howTime=c("equal_weight", "linear", "almon"),
+                             howTime=c("equal_weight", "linear", "exponential"),
                              by="month",
                              lag=12,
-                             do.ignoreZeros=FALSE,ordersAlm=1:3,do.normalizeAlm=T,
+                             alphasExp=c(0.2, 0.5),
+                             do.ignoreZeros=FALSE,
                              fill="zero")
 
 sentMeas=my_sento_measures(corpus, lexicons=lexIn,remove=stoplist,ctr=ctr)
@@ -125,7 +127,12 @@ target_var=function(sentMeas, measure=c("returns","events"), timeline=NULL
   
     # align sentiment and target variable
     sentMeasIn <- select_measures(sentMeas, dates=index(GILD))# here we should define which sentiments should be used
-  
+    ctrMerged<- select_measures(ctrMerged, dates=index(GILD))
+    sent1 <- select_measures(sent1,dates=index(GILD))
+    sent2 <- select_measures(sent2, dates=index(GILD))
+    sent3 <- select_measures(sent3, dates=index(GILD))
+    sent4 <- select_measures(sent4, dates=index(GILD))
+    
     dates <- sentMeasIn$measures$date
     target <- target[index %in% as.Date(dates)] # to align target and sentiment variables
     dim(target)[1] == dim(sentMeasIn$measures)[1] # TRUE
@@ -158,6 +165,12 @@ target_var=function(sentMeas, measure=c("returns","events"), timeline=NULL
     }else{
     #get dates from our timeline as importnant reputation events
     sentMeasIn <- select_measures(sentMeas, dates=timeline$date)# here we should define which sentiments should be used
+    sentMerged<- select_measures(ctrMerged, dates=timeline$date)
+    sent1 <- select_measures(sent1, dates=timeline$date)
+    sent2 <- select_measures(sent2, dates=timeline$date)
+    sent3 <- select_measures(sent3, dates=timeline$date)
+    sent4 <- select_measures(sent4, dates=timeline$date)
+
     events <- timeline$event
     events.date <-timeline$date
     y <- rep(0, length(sentMeasIn$measures$date)) # no "event"
@@ -179,40 +192,6 @@ sentMeansIn=target[[2]]
 #########################################################################
 # Reputation modelling
 ########################################################################
-library("doParallel")
-cl <- makeCluster(2)
-registerDoParallel(cl)
-#cv stands for cross-validation with caret package
-ctrModel <- ctr_model(model="binomial", type="cv", h=0, trainWindow=50, 
-                      testWindow=10, do.parallel=TRUE) # LASSO
-out <- sento_model(sentMeasIn, y=yb, ctr=ctrModel)
-stopCluster(cl)
-summary(out)
-pred <- predict(out$reg, newx=as.matrix(sentMeasIn$measures[, -1]), type="class")
-plotBinary(pred, yb)
-plotBinary(pred[yb == 1], yb[yb == 1])
-TP <- sum(pred[pred == 1] == yb[pred == 1]) # true positives
-TN <- sum(pred[pred == 0] == yb[pred == 0]) # true negatives
-FP <- sum(pred[pred == 1] != yb[pred == 1]) # false positives
-FN <- sum(pred[pred == 0] != yb[pred == 0]) # false negatives
-TPR <- TP / (TP + FN)
-TNR <- TN / (TN + FP)
-accT <- (TP + TN) / (TP + FP + TN + FN) # total accuracy
-
-attr <- retrieve_attributions(out, sentMeasIn)
-plot_attributions(attr) # this is only about the sentiment measures, so no constant or other variables!
-
-library("glmnet")
-out2 <- cv.glmnet(x=as.matrix(sentMeasIn$measures[, -1]), y=yb, family="binomial", alpha=1, type.measure="class", nfolds=5)
-plot(out2)
-pred2 <- predict(out2, newx=as.matrix(sentMeasIn$measures[, -1]), type="class", s="lambda.min")
-plotBinary(pred2, yb)
-coef <- coef(out2, s="lambda.min")
-
-attr2 <- attribution_cv_glmnet(out2, sentMeasIn, sentMeasIn$lexicons, "lexicons")
-pred2l <- predict(out2, newx=as.matrix(sentMeasIn$measures[, -1]), type="link", s="lambda.min") # linear equation
-(pred2l - coef(out2, s="lambda.min")[1, ]) - rowSums(attr2[, -1]) # very close to zero
-plot_attributions_cv_glmnet(attr2)
 
 ##############################################
 #merged sentimets
@@ -222,71 +201,87 @@ plot_attributions_cv_glmnet(attr2)
 #                      features = list(FEAT = sentMeasIn$features),
 #                      time = list(TIME = sentMeasIn$time))
 
-ctrMerge=sentometrics::ctr_merge(sentMeasIn,features=list(oth_press=c("other", "press"),
-                                                        stock_news=c("stocks", "news"),
-                                                        prod_results=c("products", "results"),
-                                                        drug_pharma=c("drug","pharma")),
-                                 time=list(TIME = sentMeasIn$time))
+######
+#split into development set and validation set 
+#pre-crises post crises split approach
+#dev_sample=quanteda::corpus_subset(corpus,date<="2011-07-01")
+#validate_sample=quanteda::corpus_subset(corpus,date>"2011-07-01")
+
+t=c(as.Date("2006-01-01"), as.Date("2011-07-01"))
+dev_sample=sentometrics::select_measures(sentMeasIn,
+                                         date=seq(t[1], t[2]))
+t=c(as.Date("2011-07-01"), as.Date("2016-12-31"))
+val_sample=sentometrics::select_measures(sentMeasIn,
+                                         date<=as.Date("2011-07-01"))
+
+#important merge as the split point
+dev_sample=quanteda::corpus_subset(corpus,date<="2011-11-21")
+validate_sample=quanteda::corpus_subset(corpus,date>"2011-11-21")
 
 
-sentMerged=merge_measures(ctrMerge)
-plot(sentMerged)
+dev_sample=sentometrics::select_measures(sentMeasIn, 
+                                    list(date<=as.Date("2011-07-01")))
+                                    
+
+#ctrMerge=sentometrics::ctr_merge(sentMeasIn,features=list(oth_press=c("other", "press"),
+#                                                        stock_news=c("stocks", "news"),
+#                                                        prod_results=c("products", "results"),
+#                                                        drug_pharma=c("drug","pharma")),
+#                                 time=list(TIME = sentMeasIn$time))
+
+
+#sentMerged=merge_measures(ctrMerge)
+#plot(sentMerged)
 
 #global indexes from sentiment_analysis.R
 
 ####this part is the same code as from sentiment_analysis.R
 # cluster the sentiment measures into two groups
-sent1=sentometrics::select_measures(sentMerged, 
-                                    toSelect=c("LM","myLexicon","oth_press"),
-                                    do.combine=FALSE
-)
-sent2=sentometrics::select_measures(sentMerged, 
-                                    toSelect=c("LM","myLexicon","drug_pharma"),
-                                    do.combine=FALSE)
-sent3=sentometrics::select_measures(sentMerged, 
-                                    toSelect=c("HENRY","myLexicon","stock_news"),
-                                    do.combine=FALSE
-)
-sent4=sentometrics::select_measures(sentMerged, 
-                                    toSelect=c("LM","myLexicon","prod_results"),
-                                    do.combine=FALSE
-)
-
+#sent1=sentometrics::select_measures(sentMerged, 
+#                                    toSelect=c("LM","myLexicon","oth_press"),
+#                                    do.combine=FALSE
+#)
+#sent2=sentometrics::select_measures(sentMerged, 
+#                                    toSelect=c("LM","myLexicon","drug_pharma"),
+#                                    do.combine=FALSE)
+#sent3=sentometrics::select_measures(sentMerged, 
+#                                    toSelect=c("HENRY","myLexicon","stock_news"),
+#                                    do.combine=FALSE
+#)
+#sent4=sentometrics::select_measures(sentMerged, 
+#                                    toSelect=c("LM","myLexicon","prod_results"),
+#                                    do.combine=FALSE
+#)
 globC1=sentometrics::to_global(sent1)
 globC2=sentometrics::to_global(sent2)
 globC3=sentometrics::to_global(sent3)
 globC4=sentometrics::to_global(sent4)
-####
-
-#this is relevant only for the timetable with events option
-#globC1=globC1[as.Date(rownames(globC1)) %in% events.date,]
-#globC2=globC2[as.Date(rownames(globC2)) %in% events.date,]
-#globC3=globC3[as.Date(rownames(globC3)) %in% events.date,]
-#globC4=globC4[as.Date(rownames(globC4)) %in% events.date,]
 
 glob=to_global(sentMerged)
 
 #this is data frame for stocks/returns approach
-data=data.frame(yb=yb, glob1=globC1$global,glob2=globC2$global,
-                glob3=globC3$global,glob4=globC4$global,
-                my.lex=sentMerged$measures$`myLexicon--stock_news--TIME`,
-                he=sentMerged$measures$`HENRY--stock_news--TIME`, 
-                lm=sentMerged$measures$`LM--stock_news--TIME`,
-                gi=sentMerged$measures$'GI--stock_news--TIME'
-                )
+#take all the measurements
+data=sentMerged$measures[,-1]
+data=cbind(data.frame(yb=yb, glob1=globC1$global,glob2=globC2$global,
+                glob3=globC3$global,glob4=globC4$global,data
+                ))
+#try with only data that are connected with stock/returns feature (cluster 3)
+dataclust3=sent3$measures[,-1]
+dataclust3=cbind(data.frame(yb=yb, glob1=globC1$global,glob2=globC2$global,
+                      glob3=globC3$global,glob4=globC4$global,dataclust3
+))
 
 #this is data frame for timeline 
-data2=data.frame(yb=yb, glob1=globC1$global,glob2=globC2$global,
-                glob3=globC3$global,glob4=globC4$global,
-                my.lex1=sentMerged$measures$`myLexicon--drug_pharma--TIME`,
-                my.lex2=sentMerged$measures$'myLexicon--oth_press--TIME',
-                he=sentMerged$measures$`HENRY--drug_pharma--TIME`, 
-                he2=sentMerged$measures$`HENRY--oth_press--TIME`,
-                lm=sentMerged$measures$`LM--drug_pharma--TIME`,
-                lm2=sentMerged$measures$`LM--oth_press--TIME`,
-                gi=sentMerged$measures$'GI--drug_pharma--TIME',
-                gi2=sentMerged$measures$'GI--oth_press--TIME'
-)
+#try with only data that are connected with stock/returns feature (cluster 3)
+dataclust=sentometrics::select_measures(sentMerged, 
+                                        toSelect=c("LM","myLexicon","prod_results",
+                                                   "drug_pharma","oth_press"),
+                                        do.combine=FALSE)
+dataclust=dataclust$measures[,-1]
+dataclust=cbind(data.frame(yb=yb, glob1=globC1$global,glob2=globC2$global,
+                           glob4=globC4$global,dataclust
+))
+
 
 ########## LOGISTIC REGRESSSION #####################################################
 ###returns
@@ -299,11 +294,19 @@ nothing=glm(yb ~ 1, family=binomial(link="logit"),data=data)
 summary(nothing)
 
 ###events
-fullmod=glm(yb ~ ., family=binomial(link="logit"), data=data2) # all the variables
+fullmod=glm(yb ~ ., family=binomial(link="logit"), data=dataclust3) # all the variables
 summary(fullmod)
 
 #nothing
-nothing=glm(yb ~ 1, family=binomial(link="logit"),data=data2)
+nothing=glm(yb ~ 1, family=binomial(link="logit"),data=dataclust3)
+summary(nothing)
+
+###events
+fullmod=glm(yb ~ ., family=binomial(link="logit"), data=dataclust) # all the variables
+summary(fullmod)
+
+#nothing
+nothing=glm(yb ~ 1, family=binomial(link="logit"),data=dataclust)
 summary(nothing)
 
 ###stepwise regression
@@ -335,10 +338,52 @@ lines(as.numeric(as.character(yb)), type="p", col="red") # does it change when r
 abline(h=0.5)
 
 ###regression diagnostic and evaluation
-#likelihood ratio test
-anova(final_model_v1, final_model, test ="Chisq")
 
 #pseudo R^2
 library(pscl)
 pR2(final_model)[4]  # look for 'McFadden'
 pR2(final_model_v1)[4] # look for 'McFadden'
+
+#Wald test
+library(survey)
+regTermTest(final_model, "glob2:glob4")#fails to reject, var should be removed
+regTermTest(final_model, "glob4:my.lex")
+
+#variable importance
+library(caret)
+varImp(final_model)
+varImp(final_model_v1)
+
+################ SPARSE REGRESSION #########################################################
+ctrModel=ctr_model(model="binomial", type="cv", h=0, trainWindow=60, 
+                      testWindow=10, do.parallel=TRUE) # LASSO
+sparse=sento_model(sentMerged, y=yb, ctr=ctrModel)
+stopCluster(cl)
+summary(sparse)
+pred=predict(sparse$reg, newx=as.matrix(sentMerged$measures[, -1]), type="class")
+plotBinary(pred, yb)
+plotBinary(pred[yb == 1], yb[yb == 1])
+TP=sum(pred[pred == 1] == yb[pred == 1]) # true positives
+TN=sum(pred[pred == 0] == yb[pred == 0]) # true negatives
+FP =sum(pred[pred == 1] != yb[pred == 1]) # false positives
+FN =sum(pred[pred == 0] != yb[pred == 0]) # false negatives
+TPR = TP / (TP + FN)
+TNR =TN / (TN + FP)
+accT= (TP + TN) / (TP + FP + TN + FN) # total accuracy
+
+#plot the results
+attr=retrieve_attributions(sparse, sentMerged)
+plot_attributions(attr) # this is only about the sentiment measures, so no constant or other variables!
+
+library("glmnet")
+sparse2=cv.glmnet(x=as.matrix(sentMerged$measures[, -1]), y=yb, family="binomial", alpha=1, type.measure="class", nfolds=10)
+plot(sparse2)
+pred2=predict(sparse2, newx=as.matrix(sentMerged$measures[, -1]), type="class", s="lambda.min")
+plotBinary(pred2, yb)
+coef=coef(sparse2, s="lambda.min")
+
+#prediction evaluation
+attr2=attribution_cv_glmnet(sparse2, sentMerged, sentMerged$lexicons, "lexicons")
+pred2l=predict(sparse2, newx=as.matrix(sentMerged$measures[, -1]), type="link", s="lambda.min") # linear equation
+(pred2l - coef(sparse2, s="lambda.min")[1, ]) - rowSums(attr2[, -1]) # very close to zero
+plot_attributions_cv_glmnet(attr2)
