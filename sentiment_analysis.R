@@ -66,7 +66,6 @@ corpus= add_features(corpus, featuresdf=newFeats)
 #subset the corpus - take only relevant texts
 # in this case I am taking only texts after 2006
 corpus=quanteda::corpus_subset(corpus,date>"2006-01-01")
-corpus=quanteda::corpus_subset(corpus, press != 1). 
 #most freqent 50 words
 gilead.dfm=dfm(corpus, remove = stoplist, stem = F, remove_punct =T)
 #View(gilead.dfm)                        
@@ -163,12 +162,11 @@ lexIn=sentometrics::setup_lexicons(lexiconsIn=lexicons[c("LM_eng", "GI_eng", "HE
 # sentiment into time series to take place
 ctr=sentometrics::ctr_agg(howWithin="tf-idf",
                           howDocs="equal_weight",
-                          howTime=c("equal_weight", "linear","almon"),
+                          howTime=c("equal_weight", "linear"),
                           by="day",
-                          #lag=100,
+                          lag=100,
                           do.ignoreZeros=TRUE,
-                          fill="latest",ordersAlm=1:3,
-                          do.normalizeAlm=TRUE, do.inverseAlm = TRUE)
+                          fill="latest")
 
 # compute all sentiment measures for selected articles
 event.date=format(as.Date(timeline$date[6]),"%Y-%m")
@@ -327,13 +325,13 @@ ctr=sentometrics::ctr_agg(howWithin="tf-idf",
                           do.normalizeAlm=TRUE)
 
 ctr=sentometrics::ctr_agg(howWithin="tf-idf",
-                          howDocs="proportional",
-                          howTime=c("equal_weight", "linear","almon"),
-                          by="day",
-                          lag=100,
-                          do.ignoreZeros=TRUE,
-                          fill="latest",ordersAlm=1:3,
-                          do.normalizeAlm=TRUE)
+                          howDocs="equal_weight",
+                          howTime=c("equal_weight", "linear", "exponential"),
+                          by="month",
+                          lag=12,
+                          alphasExp=c(0.2, 0.5),
+                          do.ignoreZeros=FALSE,
+                          fill="zero")
 
 # compute all sentiment measures and plot for inspection
 # with self defined function including terms with multiple words
@@ -469,4 +467,5 @@ plot(x=as.Date(row.names(spread6)),
 abline(h=0, col="blue")
 
 save.image(file='sentiments.RData')
-
+save.image(file='sentiments1.RData')
+save.image(file='sentiments2.RData')

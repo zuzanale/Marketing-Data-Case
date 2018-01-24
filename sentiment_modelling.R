@@ -259,10 +259,15 @@ data=cbind(data.frame(yb=yb, glob1=globC1$global,glob2=globC2$global,
                 ))
 #try with only data that are connected with stock/returns feature (cluster 3)
 #dataclust3=sent3$measures[,-1]
-dataclust3=sent3$measures[,grepl("HENRY" , names(sent3$measures))]
+dataclust3=sent3$measures %>% dplyr::select(starts_with("HENRY"))
+#dataclust3=sent3$measures[,grepl("HENRY" , names(sent3$measures))]
 dataclust3=cbind(data.frame(yb=yb, glob1=globC1$global,glob2=globC2$global,
                       glob3=globC3$global,glob4=globC4$global,dataclust3
 ))
+
+#split into development and validation sample
+dataclust3.dev=dataclust3[sent3$measures$date<='2011-07-01',]
+dataclust3.val=dataclust3[sent3$measures$date>'2011-07-01',]
 
 #this is data frame for timeline 
 #try with only data that are connected with stock/returns feature (cluster 3)
@@ -275,7 +280,6 @@ dataclust=cbind(data.frame(yb=yb, glob1=globC1$global,glob2=globC2$global,
                            glob4=globC4$global,dataclust
 ))
 
-
 ########## LOGISTIC REGRESSSION #####################################################
 ###returns
 #full regression
@@ -287,11 +291,11 @@ nothing=glm(yb ~ 1, family=binomial(link="logit"),data=data)
 summary(nothing)
 
 ###events
-fullmod=glm(yb ~ ., family=binomial(link="logit"), data=dataclust3) # all the variables
+fullmod=glm(yb ~ ., family=binomial(link="logit"), data=dataclust3.dev) # all the variables
 summary(fullmod)
 
 #nothing
-nothing=glm(yb ~ 1, family=binomial(link="logit"),data=dataclust3)
+nothing=glm(yb ~ 1, family=binomial(link="logit"),data=dataclust3.dev)
 summary(nothing)
 
 ###events
@@ -314,14 +318,10 @@ bothways2 =step(fullmod, scope=list(lower=formula(nothing),upper= as.formula(yb 
                direction="both")
 summary(bothways2) #final model
 
-final_model=glm(formula = yb ~ glob1 + glob3 + myLexicon..detect..equal_weight + 
-                  HENRY..web..almon1 + HENRY..detect..almon1 + myLexicon..detect..almon1_inv + 
-                  HENRY..detect..almon1_inv + myLexicon..oth_press..linear + 
-                  HENRY..stock_news..linear + GI..stock_news..almon1 + myLexicon..prod_results..linear + 
-                  myLexicon..prod_results..almon1 + myLexicon..drug_pharma..equal_weight + 
-                  HENRY..drug_pharma..equal_weight + myLexicon..drug_pharma..linear + 
-                  myLexicon..drug_pharma..almon1 + myLexicon..drug_pharma..almon1_inv, 
-                family = binomial(link = "logit"), data = dataclust3)
+final_model=glm(formula = yb ~ glob1 + glob4 + HENRY..web..equal_weight + 
+                  HENRY..increase..almon1 + HENRY..oth_press..equal_weight + 
+                  HENRY..stock_news..linear + HENRY..stock_news..almon1, family = binomial(link = "logit"), 
+                data = dataclust3.dev)
 
 plot(final_model$fitted.values, ylim=c(0, 1))
 lines(as.numeric(as.character(yb)), type="p", col="red") # does it change when reputation ("stock market") event?
@@ -336,6 +336,7 @@ lines(as.numeric(as.character(yb)), type="p", col="red") # does it change when r
 abline(h=0.5)
 
 ###regression diagnostic and evaluation
+anova(final_model, test="Chisq")
 
 #pseudo R^2
 library(pscl)
@@ -352,33 +353,60 @@ library(caret)
 varImp(final_model)
 varImp(final_model_v1)
 
-################ SPARSE REGRESSION #########################################################
-ctrModel=ctr_model(model="binomial", type="cv", h=0, trainWindow=60, 
-                      testWindow=10, do.parallel=TRUE) # LASSO
-sparse=my_sento_model(sentMerged, y=yb, ctr=ctrModel)
-stopCluster(cl)
-summary(sparse)
+#prediction plus prediction evaluation
+pred.link=predict(final_model,dataclust3.val, type="link")
+pred.response=predict(final_model,dataclust3.val,type='response')
+
+score_data=data.frame(link=pred.link, 
+                         response=pred.response,
+                         y=dataclust3.val$yb,
+                         stringsAsFactors=FALSE)
+
+score_data %>% 
+  ggplot(aes(x=link, y=response, col=y)) + 
+  scale_color_manual(values=c("black", "red")) + 
+  geom_point() + 
+  geom_rug() + 
+  ggtitle("Both link and response scores put cases in the same order")
+
+#Accuracy computation
+pred.response=ifelse(pred.response > 0.5,1,0)
+misClasificError=mean(pred.response != dataclust3.val$yb)
+print(paste('Accuracy',1-misClasificError)) #print prediction accuracy
+
+#plotting ROC curve, plotting TPR against FPR
+library(pROC)
+plot(roc(dataclust3.val$yb,pred.response, direction="<"),
+     col="blue", lwd=3, main="ROC curve for extraordinary
+     return change prediction")
+
+#AUC computation
+library(ROCR)
+pr=prediction(pred.response,dataclust3.val$yb)
+auc=performance(pr, measure = "auc")
+auc=auc@y.values[[1]]
+auc
+
 pred=predict(sparse$reg, newx=as.matrix(sentMerged$measures[, -1]), type="class")
-
-
-plotBinary(pred, yb)
-plotBinary(pred[yb == 1], yb[yb == 1])
-TP=sum(pred[pred == 1] == yb[pred == 1]) # true positives
-TN=sum(pred[pred == 0] == yb[pred == 0]) # true negatives
-FP =sum(pred[pred == 1] != yb[pred == 1]) # false positives
-FN =sum(pred[pred == 0] != yb[pred == 0]) # false negatives
+plotBinary(pred.response, yb)
+plotBinary(pred.response[yb == 1], yb[yb == 1])
+TP=sum(pred.response[pred.response == 1] == yb[pred.response == 1]) # true positives
+TN=sum(pred.response[pred.response == 0] == yb[pred.response == 0]) # true negatives
+FP =sum(pred.response[pred.response == 1] != yb[pred.response == 1]) # false positives
+FN =sum(pred.response[pred.response == 0] != yb[pred.response == 0]) # false negatives
 TPR = TP / (TP + FN)
 TNR =TN / (TN + FP)
 accT= (TP + TN) / (TP + FP + TN + FN) # total accuracy
 
+################ SPARSE REGRESSION #########################################################
 #plot the results
 attr=retrieve_attributions(sparse, sentMerged)
 plot_attributions(attr) # this is only about the sentiment measures, so no constant or other variables!
 
 library("glmnet")
-sparse2=cv.glmnet(x=as.matrix(sent3$measures[, -1]), y=yb, family="binomial", alpha=1, type.measure="class", nfolds=10)
+sparse2=cv.glmnet(x=as.matrix(dataclust3), y=yb, family="binomial", alpha=1, type.measure="class", nfolds=10)
 plot(sparse2)
-pred2=predict(sparse2, newx=as.matrix(sent3$measures[, -1]), type="class", s="lambda.min")
+pred2=predict(sparse2, newx=as.matrix(dataclust3), type="class", s="lambda.min")
 plotBinary(pred2, yb)
 coef=coef(sparse2, s="lambda.min")
 
